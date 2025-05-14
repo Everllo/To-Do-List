@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>To-Do List</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<h1 class="center-text">Список дел</h1>
+<form id="addTodoForm" class="center-text form-margin">
+  <input type="text" id="todoText" name="text" required class="input-padding">
+  <button type="submit" class="button">Добавить дело</button>
+</form>
+<table id="todoList">
+  <thead>
+  <tr>
+    <th>№</th>
+    <th>Текст</th>
+  </tr>
+  </thead>
+  <tbody>
+  {{#each todos}}
+  <tr data-id="{{id}}">
+    <td>{{id}}</td>
+    <td>
+      <span class="todo-text">{{text}}</span>
+      <button class="delete-button" data-id="{{id}}">Удалить</button>
+      <button class="edit-button" data-id="{{id}}" data-text="{{text}}">Изменить</button>
+    </td>
+  </tr>
+  {{/each}}
+  </tbody>
+</table>
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h1 class="center-text">Редактировать дело</h1>
+    <form id="editForm">
+      <input type="text" id="editText" name="text" required class="input-full-width">
+      <button class="button cancel-button" type="button" id="cancelEdit">Отмена</button>
+      <button class="button" type="submit">Сохранить</button>
+    </form>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="/js/script.js"></script>
+</body>
+</html>
