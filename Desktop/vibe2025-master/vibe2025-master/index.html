@@ -93,6 +93,23 @@
       alert('Network error: ' + err.message);
     }
   }
+ async function deleteItem(id) {
+    if (!confirm('Удалить этот элемент?')) return;
+
+    try {
+        const response = await fetch('/delete-item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        if (response.ok) location.reload();
+        else alert('Ошибка при удалении элемента');
+    } catch {
+        alert('Ошибка сети');
+    }
+}
+
+
 </script>
 
 </body>
