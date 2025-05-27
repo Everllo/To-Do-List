@@ -31,8 +31,8 @@ async function getHtmlRows() {
     return todoItems.map(item => `
         <tr>
             <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button onclick="deleteItem(${item.id})">×</button></td>
+            <td>${item.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+            <td><button class="delete-btn" data-id="${item.id}">×</button></td>
         </tr>
     `).join('');
 }
@@ -42,7 +42,6 @@ async function handleRequest(req, res) {
         try {
             const html = await fs.promises.readFile(path.join(__dirname, 'index.html'), 'utf8');
             const processedHtml = html.replace('{{rows}}', await getHtmlRows());
-
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(processedHtml);
         } catch (err) {
@@ -53,6 +52,7 @@ async function handleRequest(req, res) {
         return;
     }
 
+    // Добавляем новый элемент в БД
     if (req.url === '/add-item' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => {
@@ -82,6 +82,7 @@ async function handleRequest(req, res) {
         return;
     }
 
+    // Удаление элемента из БД
     if (req.url === '/delete-item' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => {
@@ -90,18 +91,25 @@ async function handleRequest(req, res) {
         req.on('end', async () => {
             try {
                 const data = JSON.parse(body);
-                if (!data.id) {
+                const id = parseInt(data.id, 10);
+                if (!id) {
                     res.writeHead(400, { 'Content-Type': 'text/plain' });
-                    res.end('ID is required');
+                    res.end('Invalid id');
                     return;
                 }
 
                 const connection = await mysql.createConnection(dbConfig);
-                await connection.execute('DELETE FROM items WHERE id = ?', [data.id]);
+                const [result] = await connection.execute('DELETE FROM items WHERE id = ?', [id]);
                 await connection.end();
 
+                if (result.affectedRows === 0) {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Item not found');
+                    return;
+                }
+
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ status: 'success' }));
+                res.end(JSON.stringify({ status: 'deleted' }));
             } catch (err) {
                 console.error('Error deleting item:', err);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -111,7 +119,6 @@ async function handleRequest(req, res) {
         return;
     }
 
-    // Для всех остальных маршрутов — 404
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Route not found');
 }
