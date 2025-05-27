@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Todo List</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  th { background-color: #f0f0f0; }
+  button.delete-btn { background: #ff4d4d; border: none; color: white; font-weight: bold; cursor: pointer; }
+  button.delete-btn:hover { background: #ff0000; }
+</style>
+</head>
+<body>
+  <h1>Todo List</h1>
+
+  <form id="add-item-form">
+    <input type="text" id="new-item-text" placeholder="New item" required />
+    <button type="submit">Add</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Text</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      {{rows}}
+    </tbody>
+  </table>
+
+<script>
+  const form = document.getElementById('add-item-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('new-item-text');
+    const text = input.value.trim();
+    if (!text) return alert('Please enter a task');
+    
+    const res = await fetch('/add-item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+
+    if (res.ok) {
+      input.value = '';
+      location.reload();
+    } else {
+      alert('Failed to add item');
+    }
+  });
+
+  document.addEventListener('click', async (event) => {
+    if (event.target.classList.contains('delete-btn')) {
+      const id = event.target.getAttribute('data-id');
+      if (!id) return;
+
+      if (!confirm('Удалить этот элемент?')) return;
+
+      try {
+        const res = await fetch('/delete-item', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+
+        if (res.ok) {
+          location.reload();
+        } else {
+          const errorText = await res.text();
+          alert('Ошибка при удалении: ' + errorText);
+        }
+      } catch (error) {
+        alert('Ошибка запроса на удаление');
+        console.error(error);
+      }
+    }
+  });
+</script>
+</body>
+</html>
+
