@@ -100,5 +100,22 @@
     }
 </script>
 
+<script>
+    document.addEventListener('click', async (event) => {
+        if (event.target.classList.contains('delete-btn')) {
+            const row = event.target.closest('tr');
+            const id = row.firstElementChild.textContent;
+            await fetch('/delete-item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${id}`,
+            });
+            location.reload();
+        }
+    });
+</script>
+
 </body>
 </html>
