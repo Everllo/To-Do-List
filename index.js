@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const querystring = require('querystring');
 
 const PORT = 3000;
 
@@ -38,44 +39,49 @@ const dbConfig = {
 
 // Stub function for generating HTML rows
 async function getHtmlRows() {
-    // Example data - replace with actual DB data later
-    /*
-    const todoItems = [
-        { id: 1, text: 'First todo item' },
-        { id: 2, text: 'Second todo item' }
-    ];*/
-
     const todoItems = await retrieveListItems();
-
-    // Generate HTML for each item
     return todoItems.map(item => `
         <tr>
             <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button class="delete-btn">×</button></td>
+            <td class="text-cell">${item.text}</td>
+            <td>
+                <button class="edit-btn">Edit</button>
+                <button class="delete-btn">×</button>
+            </td>
         </tr>
     `).join('');
 }
 
 // Modified request handler with template replacement
 async function handleRequest(req, res) {
-    if (req.url === '/') {
-        try {
-            const html = await fs.promises.readFile(
-                path.join(__dirname, 'index.html'), 
-                'utf8'
-            );
-            
-            // Replace template placeholder with actual content
-            const processedHtml = html.replace('{{rows}}', await getHtmlRows());
-            
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(processedHtml);
-        } catch (err) {
-            console.error(err);
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Error loading index.html');
-        }
+    if (req.url === '/' && req.method === 'GET') {
+        // Существующий код
+    } else if (req.url === '/update-item' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', async () => {
+            const parsedBody = querystring.parse(body);
+            const id = parsedBody.id;
+            const text = parsedBody.text;
+            if (id && text) {
+                try {
+                    const connection = await mysql.createConnection(dbConfig);
+                    await connection.execute('UPDATE items SET text = ? WHERE id = ?', [text, id]);
+                    await connection.end();
+                    res.writeHead(200);
+                    res.end();
+                } catch (error) {
+                    console.error(error);
+                    res.writeHead(500);
+                    res.end('Error updating item');
+                }
+            } else {
+                res.writeHead(400);
+                res.end('Bad request');
+            }
+        });
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');

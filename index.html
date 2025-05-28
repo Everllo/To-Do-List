@@ -99,6 +99,34 @@
         renderList();
     }
 </script>
+    
+<script>
+    document.addEventListener('click', async (event) => {
+        const target = event.target;
+        if (target.classList.contains('edit-btn')) {
+            const row = target.closest('tr');
+            const textCell = row.querySelector('.text-cell');
+            const currentText = textCell.textContent;
+            textCell.innerHTML = `<input type="text" value="${currentText}">`;
+            target.textContent = 'Save';
+            target.classList.remove('edit-btn');
+            target.classList.add('save-btn');
+        } else if (target.classList.contains('save-btn')) {
+            const row = target.closest('tr');
+            const id = row.firstElementChild.textContent;
+            const input = row.querySelector('.text-cell input');
+            const newText = input.value;
+            await fetch('/update-item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `id=${id}&text=${newText}`,
+            });
+            location.reload();
+        }
+    });
+</script>
 
 </body>
 </html>
