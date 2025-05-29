@@ -5,100 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>To-Do List</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
-        }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .delete-btn, .edit-btn { cursor: pointer; background: #ff4444; color: white; border: none; padding: 5px 10px; }
+        .edit-btn { background: #007bff; }
+        .add-form { margin-bottom: 20px; }
+        .add-form input[type="text"] { padding: 5px; width: 70%; }
+        .add-form button { padding: 5px 10px; background: #28a745; color: white; border: none; }
     </style>
 </head>
 <body>
+    <h1>To-Do List</h1>
+    
+    <form class="add-form" id="addForm">
+        <input type="text" id="newItem" placeholder="Enter new item" required>
+        <button type="submit">Add</button>
+    </form>
 
-<h2 style="text-align: center;">To-Do List</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Number</th>
+                <th>Text</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="todoTable">
+            {{rows}}
+        </tbody>
+    </table>
 
-<table id="todoList">
-    <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
+    <script>
+        // Handle form submission for adding items
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = document.getElementById('newItem').value;
+            if (!text) return;
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
-
-<script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
+            try {
+                const response = await fetch('/items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                if (response.ok) {
+                    location.reload(); // Reload to refresh the list
+                } else {
+                    alert('Error adding item');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                alert('Error adding item');
+            }
+            document.getElementById('newItem').value = '';
         });
-    }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
+        // Handle delete button clicks
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const id = button.dataset.id;
+                try {
+                    const response = await fetch(`/items/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Error deleting item');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error deleting item');
+                }
+            });
+        });
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
+        // Handle edit button clicks
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const id = button.dataset.id;
+                const text = prompt('Enter new text for the item:', button.dataset.text);
+                if (text === null || text.trim() === '') return;
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
-</script>
-
+                try {
+                    const response = await fetch(`/items/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Error editing item');
+                    }
+                } catch (err) {
+                    console.error('Error:', err);
+                    alert('Error editing item');
+                }
+            });
+        });
+    </script>
 </body>
 </html>
