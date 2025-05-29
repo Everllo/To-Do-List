@@ -1,0 +1,20 @@
+Добавление
+
+напиши ассинхронную функцию для вставки элемента в таблицу items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    text VARCHAR(255) NOT NULL
+); на java script
+
+Удаление 
+
+напиши ассинхронную функцию для удаления элемента из таблицы items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    text VARCHAR(255) NOT NULL
+); на java script
+
+Редактирование
+
+напиши ассинхронную функцию для редактирования элемента в таблице items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    text VARCHAR(255) NOT NULL
+); на java script
