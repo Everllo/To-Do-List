@@ -60,8 +60,13 @@
 </table>
 
 <div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
+    <input type="text" id="newItem" placeholder="Введите новый элемент">
     <button onclick="addItem()">Add</button>
+</div>
+
+<div class="removeItem">
+    <input type="text" id="removeItem" placeholder="Удалите элемент">
+    <button onclick="addItem()">Remove</button>
 </div>
 
 <script>
@@ -84,20 +89,34 @@
     }
 
     function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+    const newItemInput = document.getElementById('newItem');
+    const newItemText = newItemInput.value.trim();
+    if (newItemText) {
+        fetch('/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: newItemText })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Добавляем новый элемент в массив items на фронтенде
+            items.push({ id: data.id, text: newItemText });
+            newItemInput.value = '';      // Очищаем поле ввода
+            renderList();                // Перерисовываем список на странице
+        })
+        .catch(error => console.error('Error adding item:', error));
         }
     }
-
     function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
+    const itemId = items[index].id;
+    fetch(`/remove/${itemId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(() => {
+            items.splice(index, 1);  // Удаляем элемент из массива по индексу
+            renderList();            // Перерисовываем таблицу без удалённого элемента
+        })
+        .catch(error => console.error('Error removing item:', error));
+}
 </script>
 
 </body>
