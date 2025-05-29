@@ -13,75 +13,122 @@ const dbConfig = {
     database: 'todolist',
   };
 
+const pool = mysql.createPool(dbConfig);
 
-  async function retrieveListItems() {
+async function serveHtmlWithItems(res) {
     try {
-      // Create a connection to the database
-      const connection = await mysql.createConnection(dbConfig);
-      
-      // Query to select all items from the database
-      const query = 'SELECT id, text FROM items';
-      
-      // Execute the query
-      const [rows] = await connection.execute(query);
-      
-      // Close the connection
-      await connection.end();
-      
-      // Return the retrieved items as a JSON array
-      return rows;
+        // Get items from database
+        const [items] = await pool.query('SELECT id, text FROM items ORDER BY id');
+        
+        // Generate HTML rows
+        const rows = items.map(item => `
+            <tr data-id="${item.id}">
+                <td>${item.id}</td>
+                <td>${item.text}</td>
+                <td>
+                    <button onclick="enableEdit(${item.id}, '${item.text.replace(/'/g, "\\'")}')" class="edit-btn">Edit</button>
+                    <button onclick="deleteItem(${item.id})" class="delete-btn">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+
+        // Read HTML template
+        let html = await fs.readFile(path.join(__dirname, 'index.html'), 'utf8');
+        
+        // Replace placeholder with dynamic content
+        html = html.replace('{{rows}}', rows);
+        
+        // Send response
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(html);
     } catch (error) {
-      console.error('Error retrieving list items:', error);
-      throw error; // Re-throw the error
+        console.error('Error:', error);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
     }
-  }
-
-// Stub function for generating HTML rows
-async function getHtmlRows() {
-    // Example data - replace with actual DB data later
-    /*
-    const todoItems = [
-        { id: 1, text: 'First todo item' },
-        { id: 2, text: 'Second todo item' }
-    ];*/
-
-    const todoItems = await retrieveListItems();
-
-    // Generate HTML for each item
-    return todoItems.map(item => `
-        <tr>
-            <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button class="delete-btn">×</button></td>
-        </tr>
-    `).join('');
 }
 
-// Modified request handler with template replacement
 async function handleRequest(req, res) {
-    if (req.url === '/') {
-        try {
-            const html = await fs.promises.readFile(
-                path.join(__dirname, 'index.html'), 
-                'utf8'
-            );
-            
-            // Replace template placeholder with actual content
-            const processedHtml = html.replace('{{rows}}', await getHtmlRows());
-            
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(processedHtml);
-        } catch (err) {
-            console.error(err);
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Error loading index.html');
+    try {
+        // Handle API routes
+        if (req.method === 'GET' && req.url === '/') {
+            await serveHtmlWithItems(res);
         }
-    } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Route not found');
+        else if (req.method === 'POST' && req.url === '/items') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { text } = JSON.parse(body);
+                    await pool.query('INSERT INTO items (text) VALUES (?)', [text]);
+                    res.writeHead(201, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true }));
+                } catch (error) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: error.message }));
+                }
+            });
+        }
+        else if (req.method === 'PUT' && req.url.startsWith('/items/')) {
+            const id = req.url.split('/')[2];
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { text } = JSON.parse(body);
+                    const [result] = await pool.query('UPDATE items SET text = ? WHERE id = ?', [text, id]);
+                    
+                    if (result.affectedRows === 0) {
+                        res.writeHead(404, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, error: 'Item not found' }));
+                    } else {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true }));
+                    }
+                } catch (error) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: error.message }));
+                }
+            });
+        }
+        else if (req.method === 'DELETE' && req.url.startsWith('/items/')) {
+            const id = req.url.split('/')[2];
+            try {
+                const [result] = await pool.query('DELETE FROM items WHERE id = ?', [id]);
+                
+                if (result.affectedRows === 0) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Item not found' }));
+                } else {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true }));
+                }
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: error.message }));
+            }
+        }
+        else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not Found');
+        }
+    } catch (error) {
+        console.error('Server error:', error);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
     }
 }
 
 // Create and start server
 const server = http.createServer(handleRequest);
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}/`);
+    console.log('Press Ctrl+C to stop');
+});
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('\nClosing database connections...');
+    await pool.end();
+    process.exit();
+});
