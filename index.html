@@ -34,11 +34,80 @@
         }
         .add-form input[type="text"] {
             padding: 8px;
-            width: 70%;
+            width: 83%;
         }
         .add-form button {
             padding: 8px;
-            width: 20%;
+            width: 15%;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .add-form button:hover {
+            background-color: #45a049;
+        }
+        .delete-form, .edit-form, .confirm-form, .cancel-form {
+            display: inline-block;
+            margin: 0 4px;
+        }
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .delete-btn {
+            cursor: pointer;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+        .edit-btn {
+            cursor: pointer;
+            background-color: #4444ff;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .edit-btn:hover {
+            background-color: #0000cc;
+        }
+        .confirm-btn {
+            cursor: pointer;
+            background-color: #44ff44;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .confirm-btn:hover {
+            background-color: #00cc00;
+        }
+        .cancel-btn {
+            cursor: pointer;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .cancel-btn:hover {
+            background-color: #cc0000;
+        }
+        .edit-input {
+            width: 70%;
+            padding: 6px;
+            margin-right: 8px;
         }
     </style>
 </head>
@@ -60,45 +129,11 @@
 </table>
 
 <div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
+    <form action="/add" method="POST">
+        <input type="text" id="newItem" name="text" placeholder="Enter new item">
+        <button type="submit">Add</button>
+    </form>
 </div>
-
-<script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
-</script>
 
 </body>
 </html>
