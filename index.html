@@ -1,104 +1,201 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TO-DO LIST</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px;
+      color: white;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+      border-radius: 16px;
+      padding: 30px;
+      width: 100%;
+      max-width: 450px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 25px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #ffffff;
+    }
+
+    form {
+      display: flex;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 15px;
+      border: none;
+      border-radius: 10px 0 0 10px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    button {
+      background: #00c9a7;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 0 10px 10px 0;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #00b190;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.3s ease;
+    }
+
+    li:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    li span {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    li input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+    }
+
+    .btn {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      margin-left: 10px;
+      transition: 0.2s;
+    }
+
+    .btn:hover {
+      color: #00c9a7;
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <h1>TO-DO LIST</h1>
+    <form id="addForm">
+      <input type="text" id="itemInput" placeholder="Введите элемент" required />
+      <button type="submit">➕</button>
+    </form>
+    <ul id="itemList"></ul>
+  </div>
 
-<h2 style="text-align: center;">To-Do List</h2>
+  <script>
+    const form = document.getElementById('addForm');
+    const input = document.getElementById('itemInput');
+    const list = document.getElementById('itemList');
 
-<table id="todoList">
-    <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
+    function createItem(text) {
+      const li = document.createElement('li');
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
+      const span = document.createElement('span');
+      span.textContent = text;
+      li.appendChild(span);
 
-<script>
-    let items = [];
-    let nextId = 1;
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏️';
+      editBtn.className = 'btn';
+      li.appendChild(editBtn);
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '🗑️';
+      delBtn.className = 'btn';
+      li.appendChild(delBtn);
 
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
+      delBtn.onclick = () => li.remove();
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
+      editBtn.onclick = () => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = span.textContent;
+        li.insertBefore(input, span);
+        li.removeChild(span);
+        input.focus();
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        input.onkeydown = e => {
+          if (e.key === 'Enter') finishEdit();
+          if (e.key === 'Escape') cancelEdit();
+        };
+        input.onblur = finishEdit;
+
+        function finishEdit() {
+          const value = input.value.trim();
+          span.textContent = value || 'Без названия';
+          li.insertBefore(span, input);
+          li.removeChild(input);
         }
+
+        function cancelEdit() {
+          li.insertBefore(span, input);
+          li.removeChild(input);
+        }
+      };
+
+      return li;
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
-</script>
+    form.onsubmit = e => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      const item = createItem(text);
+      list.appendChild(item);
+      input.value = '';
+      input.focus();
+    };
 
+    ['Первый пункт', 'Второй пункт'].forEach(text => {
+      list.appendChild(createItem(text));
+    });
+  </script>
 </body>
 </html>
