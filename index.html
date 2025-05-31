@@ -77,7 +77,8 @@
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
+                <button onclick="removeItem(${item.id})">Remove</button>
+                <button onclick="editItem(${item.id})">Edit</button>
             `;
             listBody.appendChild(row);
         });
@@ -86,18 +87,72 @@
     function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
-
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: newItemText })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Можно добавить элемент в список, вызвав перезагрузку или обновить DOM
+                        // Например, вызвать функцию renderList() для обновления таблицы
+                        console.log('Элемент добавлен, ID:', data.id);
+                        newItemInput.value = '';
+                        // Опционально: перезагрузить страницу или обновить таблицу через дополнительный запрос
+                        window.location.reload();
+                    } else {
+                        alert("Ошибка добавления: " + data.error);
+                    }
+                });
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    function removeItem(id) {
+        fetch('/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: id })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Элемент удалён, ID:', id);
+                    // Перезагрузите страницу или обновите DOM
+                    window.location.reload();
+                } else {
+                    alert("Ошибка удаления: " + data.error);
+                }
+            });
     }
+
+    function editItem(id) {
+        const newText = prompt("Введите новый текст:");
+        if (newText) {
+            fetch('/edit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: id, text: newText })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Элемент изменён, ID:', id);
+                        window.location.reload();
+                    } else {
+                        alert("Ошибка редактирования: " + data.error);
+                    }
+                });
+        }
+    }
+
 </script>
 
 </body>
