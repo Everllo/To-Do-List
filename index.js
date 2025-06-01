@@ -11,40 +11,32 @@ const dbConfig = {
     user: 'root',
     password: '',
     database: 'todolist',
-  };
+};
 
-
-  async function retrieveListItems() {
+async function retrieveListItems() {
     try {
-      // Create a connection to the database
-      const connection = await mysql.createConnection(dbConfig);
-      
-      // Query to select all items from the database
-      const query = 'SELECT id, text FROM items';
-      
-      // Execute the query
-      const [rows] = await connection.execute(query);
-      
-      // Close the connection
-      await connection.end();
-      
-      // Return the retrieved items as a JSON array
-      return rows;
+        // Create a connection to the database
+        const connection = await mysql.createConnection(dbConfig);
+        
+        // Query to select all items from the database
+        const query = 'SELECT id, text FROM items';
+        
+        // Execute the query
+        const [rows] = await connection.execute(query);
+        
+        // Close the connection
+        await connection.end();
+        
+        // Return the retrieved items as a JSON array
+        return rows;
     } catch (error) {
-      console.error('Error retrieving list items:', error);
-      throw error; // Re-throw the error
+        console.error('Error retrieving list items:', error);
+        throw error; // Re-throw the error
     }
-  }
+}
 
 // Stub function for generating HTML rows
 async function getHtmlRows() {
-    // Example data - replace with actual DB data later
-    /*
-    const todoItems = [
-        { id: 1, text: 'First todo item' },
-        { id: 2, text: 'Second todo item' }
-    ];*/
-
     const todoItems = await retrieveListItems();
 
     // Generate HTML for each item
@@ -59,7 +51,7 @@ async function getHtmlRows() {
 
 // Modified request handler with template replacement
 async function handleRequest(req, res) {
-    if (req.url === '/') {
+    if (req.url === '/' && req.method === 'GET') {
         try {
             const html = await fs.promises.readFile(
                 path.join(__dirname, 'index.html'), 
@@ -76,6 +68,28 @@ async function handleRequest(req, res) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Error loading index.html');
         }
+    } else if (req.url === '/add' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            try {
+                const text = new URLSearchParams(body).get('text');
+                if (!text || text.trim().length === 0) {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Task text cannot be empty');
+                    return;
+                }
+                const connection = await mysql.createConnection(dbConfig);
+                await connection.execute('INSERT INTO items (text) VALUES (?)', [text.trim()]);
+                await connection.end();
+                res.writeHead(302, { 'Location': '/' });
+                res.end();
+            } catch (err) {
+                console.error('Error adding item:', err);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error adding item');
+            }
+        });
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');
