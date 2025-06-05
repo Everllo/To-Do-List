@@ -26,14 +26,14 @@ async function retrieveListItems() {
     }
 }
 
-async function deleteListItem(id) {
+async function updateListItem(id, newText) {
     try {
         const connection = await mysql.createConnection(dbConfig);
-        const query = 'DELETE FROM items WHERE id = ?';
-        await connection.execute(query, [id]);
+        const query = 'UPDATE items SET text = ? WHERE id = ?';
+        await connection.execute(query, [newText, id]);
         await connection.end();
     } catch (error) {
-        console.error('Error deleting list item:', error);
+        console.error('Error updating list item:', error);
         throw error;
     }
 }
@@ -59,21 +59,21 @@ async function handleRequest(req, res) {
             res.end('Error loading index.html');
         }
     } 
-    else if (req.method === 'POST' && parsedUrl.pathname === '/delete') {
+    else if (req.method === 'POST' && parsedUrl.pathname === '/update') {
         let body = '';
         req.on('data', chunk => {
             body += chunk.toString();
         });
         req.on('end', async () => {
             try {
-                const { id } = JSON.parse(body);
-                await deleteListItem(id);
+                const { id, text } = JSON.parse(body);
+                await updateListItem(id, text);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true }));
             } catch (error) {
                 console.error(error);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, error: 'Failed to delete item' }));
+                res.end(JSON.stringify({ success: false, error: 'Failed to update item' }));
             }
         });
     }
@@ -88,8 +88,14 @@ async function getHtmlRows() {
     return todoItems.map(item => `
         <tr>
             <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button class="delete-btn" data-id="${item.id}">×</button></td>
+            <td>
+                <span class="item-text">${item.text}</span>
+                <input type="text" class="edit-input" value="${item.text}" style="display: none;">
+            </td>
+            <td>
+                <button class="edit-btn" data-id="${item.id}">✏️</button>
+                <button class="save-btn" data-id="${item.id}" style="display: none;">💾</button>
+            </td>
         </tr>
     `).join('');
 }
