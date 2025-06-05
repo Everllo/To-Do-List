@@ -26,18 +26,6 @@ async function retrieveListItems() {
     }
 }
 
-async function addListItem(text) {
-    try {
-        const connection = await mysql.createConnection(dbConfig);
-        const query = 'INSERT INTO items (text) VALUES (?)';
-        await connection.execute(query, [text]);
-        await connection.end();
-    } catch (error) {
-        console.error('Error adding list item:', error);
-        throw error;
-    }
-}
-
 async function deleteListItem(id) {
     try {
         const connection = await mysql.createConnection(dbConfig);
@@ -50,27 +38,19 @@ async function deleteListItem(id) {
     }
 }
 
-async function getHtmlRows() {
-    const todoItems = await retrieveListItems();
-    return todoItems.map(item => `
-        <tr>
-            <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button class="delete-btn" data-id="${item.id}">×</button></td>
-        </tr>
-    `).join('');
-}
-
 async function handleRequest(req, res) {
     const parsedUrl = url.parse(req.url, true);
     
-    if (req.method === 'GET' && req.url === '/') {
+    if (req.method === 'GET' && parsedUrl.pathname === '/') {
         try {
             const html = await fs.promises.readFile(
                 path.join(__dirname, 'index.html'), 
                 'utf8'
             );
-            const processedHtml = html.replace('{{rows}}', await getHtmlRows());
+            
+            const rows = await getHtmlRows();
+            const processedHtml = html.replace('{{rows}}', rows);
+            
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(processedHtml);
         } catch (err) {
@@ -79,25 +59,7 @@ async function handleRequest(req, res) {
             res.end('Error loading index.html');
         }
     } 
-    else if (req.method === 'POST' && req.url === '/add') {
-        let body = '';
-        req.on('data', chunk => {
-            body += chunk.toString();
-        });
-        req.on('end', async () => {
-            try {
-                const { text } = JSON.parse(body);
-                await addListItem(text);
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true }));
-            } catch (error) {
-                console.error(error);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, error: 'Failed to add item' }));
-            }
-        });
-    }
-    else if (req.method === 'POST' && req.url === '/delete') {
+    else if (req.method === 'POST' && parsedUrl.pathname === '/delete') {
         let body = '';
         req.on('data', chunk => {
             body += chunk.toString();
@@ -119,6 +81,17 @@ async function handleRequest(req, res) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');
     }
+}
+
+async function getHtmlRows() {
+    const todoItems = await retrieveListItems();
+    return todoItems.map(item => `
+        <tr>
+            <td>${item.id}</td>
+            <td>${item.text}</td>
+            <td><button class="delete-btn" data-id="${item.id}">×</button></td>
+        </tr>
+    `).join('');
 }
 
 const server = http.createServer(handleRequest);
