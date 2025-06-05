@@ -1,3 +1,4 @@
+// index.js
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -5,6 +6,7 @@ const mysql = require('mysql2/promise');
 
 const PORT = 3000;
 
+// Database connection settings
 const dbConfig = {
     host: 'localhost',
     user: 'root',
@@ -30,13 +32,15 @@ async function getHtmlRows() {
     return todoItems.map((item, index) => `
         <tr>
             <td>${index + 1}</td>
-            <td>${item.text}</td>
             <td>
-                <form method="POST" action="/delete" style="display:inline;">
+                <span id="text-${item.id}">${item.text}</span>
+                <form id="form-${item.id}" method="POST" action="/edit" style="display:none;">
                     <input type="hidden" name="id" value="${item.id}" />
-                    <button type="submit">Удалить</button>
+                    <input type="text" name="text" value="${item.text}" />
+                    <button type="submit">Сохранить</button>
                 </form>
             </td>
+            <td><button onclick="toggleEdit(${item.id})">Редактировать</button></td>
         </tr>
     `).join('');
 }
@@ -56,22 +60,23 @@ async function handleRequest(req, res) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Error loading index.html');
         }
-    } else if (req.method === 'POST' && req.url === '/delete') {
+    } else if (req.method === 'POST' && req.url === '/edit') {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             const parsed = new URLSearchParams(body);
             const id = parsed.get('id');
+            const text = parsed.get('text');
 
             try {
                 const connection = await mysql.createConnection(dbConfig);
-                await connection.execute('DELETE FROM items WHERE id = ?', [id]);
+                await connection.execute('UPDATE items SET text = ? WHERE id = ?', [text, id]);
                 await connection.end();
 
                 res.writeHead(302, { Location: '/' });
                 res.end();
             } catch (err) {
-                console.error('Error deleting item:', err);
+                console.error('Error updating item:', err);
                 res.writeHead(500);
                 res.end('Internal Server Error');
             }
