@@ -61,43 +61,65 @@
 
 <div class="add-form">
     <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
+    <button id="addButton">Add</button>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add item functionality
+        document.getElementById('addButton').addEventListener('click', async function() {
+            const newItemInput = document.getElementById('newItem');
+            const newItemText = newItemInput.value.trim();
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
+            if (newItemText) {
+                try {
+                    const response = await fetch('/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ text: newItemText })
+                    });
 
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
+                    const result = await response.json();
+                    if (result.success) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to add item');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to add item');
+                }
+            }
         });
-    }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
+        // Delete item functionality
+        document.addEventListener('click', async function(e) {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.getAttribute('data-id');
+                try {
+                    const response = await fetch('/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ id: id })
+                    });
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
+                    const result = await response.json();
+                    if (result.success) {
+                        window.location.reload();
+                    } else {
+                        alert('Failed to delete item');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to delete item');
+                }
+            }
+        });
+    });
 </script>
 
 </body>
