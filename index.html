@@ -27,18 +27,12 @@
         #todoList th:nth-child(2) {
             width: 90%;
         }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
+        .delete-btn {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: red;
         }
     </style>
 </head>
@@ -59,45 +53,34 @@
     </tbody>
 </table>
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
-
 <script>
-    let items = [];
-    let nextId = 1;
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                
+                try {
+                    const response = await fetch('/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ id })
+                    });
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
+                    if (response.ok) {
+                        // Reload the page to show the updated list
+                        window.location.reload();
+                    } else {
+                        alert('Failed to delete item');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to delete item');
+                }
+            });
         });
-    }
-
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
+    });
 </script>
 
 </body>
