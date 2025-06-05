@@ -27,18 +27,15 @@
         #todoList th:nth-child(2) {
             width: 90%;
         }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
+        .edit-btn, .save-btn {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 16px;
         }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
+        .edit-input {
+            width: 90%;
+            padding: 5px;
         }
     </style>
 </head>
@@ -59,45 +56,51 @@
     </tbody>
 </table>
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
-
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
+                const row = btn.closest('tr');
+                
+                // Show input and save button, hide text and edit button
+                row.querySelector('.item-text').style.display = 'none';
+                row.querySelector('.edit-input').style.display = 'inline-block';
+                btn.style.display = 'none';
+                row.querySelector('.save-btn').style.display = 'inline-block';
+            });
         });
-    }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
+        document.querySelectorAll('.save-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                const row = btn.closest('tr');
+                const newText = row.querySelector('.edit-input').value.trim();
+                
+                if (newText) {
+                    try {
+                        const response = await fetch('/update', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ id, text: newText })
+                        });
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
+                        if (response.ok) {
+                            // Reload the page to show the updated list
+                            window.location.reload();
+                        } else {
+                            alert('Failed to update item');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Failed to update item');
+                    }
+                }
+            });
+        });
+    });
 </script>
 
 </body>
