@@ -27,18 +27,12 @@
         #todoList th:nth-child(2) {
             width: 90%;
         }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
+        .delete-btn {
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: red;
         }
     </style>
 </head>
@@ -59,56 +53,23 @@
     </tbody>
 </table>
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button id="addButton">Add</button>
-</div>
-
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add item functionality
-        document.getElementById('addButton').addEventListener('click', async function() {
-            const newItemInput = document.getElementById('newItem');
-            const newItemText = newItemInput.value.trim();
-
-            if (newItemText) {
-                try {
-                    const response = await fetch('/add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ text: newItemText })
-                    });
-
-                    const result = await response.json();
-                    if (result.success) {
-                        window.location.reload();
-                    } else {
-                        alert('Failed to add item');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to add item');
-                }
-            }
-        });
-
-        // Delete item functionality
-        document.addEventListener('click', async function(e) {
-            if (e.target.classList.contains('delete-btn')) {
-                const id = e.target.getAttribute('data-id');
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
+                
                 try {
                     const response = await fetch('/delete', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ id: id })
+                        body: JSON.stringify({ id })
                     });
 
-                    const result = await response.json();
-                    if (result.success) {
+                    if (response.ok) {
+                        // Reload the page to show the updated list
                         window.location.reload();
                     } else {
                         alert('Failed to delete item');
@@ -117,7 +78,7 @@
                     console.error('Error:', error);
                     alert('Failed to delete item');
                 }
-            }
+            });
         });
     });
 </script>
