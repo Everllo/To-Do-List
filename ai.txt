@@ -1,4 +1,6 @@
-у меня есть ветка main в репозитории: index.js:const http = require('http');
+у меня есть ветка main в репозитории: index.js:
+
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
@@ -84,7 +86,14 @@ async function handleRequest(req, res) {
 
 // Create and start server
 const server = http.createServer(handleRequest);
-server.listen(PORT, () => console.log(Server running on port ${PORT})); и index.html:<!DOCTYPE html>
+server.listen(PORT, () => console.log(Server running on port ${PORT})); 
+
+
+
+
+и index.html:
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -187,4 +196,5 @@ server.listen(PORT, () => console.log(Server running on port ${PORT})); и index
 </script>
 
 </body>
-</html> Мне нужно разбить feature/add, feature/remove, feature/edit на ветки
+</html> 
+Мне нужно разбить feature/add, feature/remove, feature/edit на отдельные ветки в гите.
