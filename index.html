@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
+    <title>To-Do List (Delete)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,30 +21,26 @@
         #todoList th {
             background-color: #f0f0f0;
         }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
+        #todoList th:first-child,
+        #todoList th:last-child {
+            width: 10%;
         }
         #todoList th:nth-child(2) {
-            width: 90%;
+            width: 80%;
         }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
+        .delete-btn {
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
 
-<h2 style="text-align: center;">To-Do List</h2>
+<h2 style="text-align: center;">To-Do List (Delete Function)</h2>
 
 <table id="todoList">
     <thead>
@@ -59,46 +55,19 @@
     </tbody>
 </table>
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
-
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+    async function removeItem(id) {
+        try {
+            const response = await fetch(`/delete/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                console.error('Failed to delete item');
+            }
+        } catch (error) {
+            console.error('Error:', error);
         }
     }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
 </script>
-
 </body>
 </html>
