@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List (Delete)</title>
+    <title>To-Do List (Edit)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -26,21 +26,27 @@
             width: 10%;
         }
         #todoList th:nth-child(2) {
-            width: 80%;
+            width: 70%;
         }
-        .delete-btn {
-            background: #ff4d4d;
+        .edit-btn {
+            background: #4CAF50;
             color: white;
             border: none;
             padding: 5px 10px;
             cursor: pointer;
             border-radius: 3px;
+            margin-right: 5px;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
 
-<h2 style="text-align: center;">To-Do List (Delete Function)</h2>
+<h2 style="text-align: center;">To-Do List (Edit Function)</h2>
 
 <table id="todoList">
     <thead>
@@ -56,13 +62,42 @@
 </table>
 
 <script>
-    async function removeItem(id) {
+    function enableEdit(id, currentText) {
+        const textCell = document.getElementById(`text-${id}`);
+        const editInput = document.createElement('input');
+        editInput.type = 'text';
+        editInput.value = currentText;
+        editInput.className = 'edit-input';
+        editInput.id = `edit-${id}`;
+        
+        textCell.innerHTML = '';
+        textCell.appendChild(editInput);
+        
+        const saveButton = document.createElement('button');
+        saveButton.textContent = 'Save';
+        saveButton.className = 'edit-btn';
+        saveButton.onclick = () => saveItem(id);
+        
+        const actionCell = document.getElementById(`actions-${id}`);
+        actionCell.innerHTML = '';
+        actionCell.appendChild(saveButton);
+    }
+
+    async function saveItem(id) {
+        const newText = document.getElementById(`edit-${id}`).value.trim();
+        if (!newText) return;
+
         try {
-            const response = await fetch(`/delete/${id}`, { method: 'DELETE' });
+            const response = await fetch(`/edit/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: newText })
+            });
+            
             if (response.ok) {
                 window.location.reload();
             } else {
-                console.error('Failed to delete item');
+                console.error('Failed to update item');
             }
         } catch (error) {
             console.error('Error:', error);
