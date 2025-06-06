@@ -2,73 +2,91 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const querystring = require('querystring');
 
 const PORT = 3000;
 
-// Database connection settings
 const dbConfig = {
     host: 'localhost',
     user: 'root',
     password: '',
     database: 'todolist',
-  };
+};
 
-
-  async function retrieveListItems() {
+async function retrieveListItems() {
     try {
-      // Create a connection to the database
-      const connection = await mysql.createConnection(dbConfig);
-      
-      // Query to select all items from the database
-      const query = 'SELECT id, text FROM items';
-      
-      // Execute the query
-      const [rows] = await connection.execute(query);
-      
-      // Close the connection
-      await connection.end();
-      
-      // Return the retrieved items as a JSON array
-      return rows;
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'SELECT id, text FROM items';
+        const [rows] = await connection.execute(query);
+        await connection.end();
+        return rows;
     } catch (error) {
-      console.error('Error retrieving list items:', error);
-      throw error; // Re-throw the error
+        console.error('Error retrieving list items:', error);
+        throw error;
     }
-  }
+}
 
-// Stub function for generating HTML rows
+async function addNewItem(text) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'INSERT INTO items (text) VALUES (?)';
+        const [result] = await connection.execute(query, [text]);
+        await connection.end();
+        return result.insertId;
+    } catch (error) {
+        console.error('Error adding new item:', error);
+        throw error;
+    }
+}
+
+async function deleteItem(id) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'DELETE FROM items WHERE id = ?';
+        await connection.execute(query, [id]);
+        await connection.end();
+        return true;
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        throw error;
+    }
+}
+
+async function updateItem(id, text) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'UPDATE items SET text = ? WHERE id = ?';
+        await connection.execute(query, [text, id]);
+        await connection.end();
+        return true;
+    } catch (error) {
+        console.error('Error updating item:', error);
+        throw error;
+    }
+}
+
 async function getHtmlRows() {
-    // Example data - replace with actual DB data later
-    /*
-    const todoItems = [
-        { id: 1, text: 'First todo item' },
-        { id: 2, text: 'Second todo item' }
-    ];*/
-
     const todoItems = await retrieveListItems();
-
-    // Generate HTML for each item
     return todoItems.map(item => `
         <tr>
             <td>${item.id}</td>
             <td>${item.text}</td>
-            <td><button class="delete-btn">×</button></td>
+            <td>
+                <button onclick="editItem(${item.id}, '${item.text.replace(/'/g, "\\'")}')">Edit</button>
+                <button onclick="removeItem(${item.id})">Remove</button>
+            </td>
         </tr>
     `).join('');
 }
 
-// Modified request handler with template replacement
 async function handleRequest(req, res) {
-    if (req.url === '/') {
+    if (req.url === '/' && req.method === 'GET') {
         try {
             const html = await fs.promises.readFile(
                 path.join(__dirname, 'index.html'), 
                 'utf8'
             );
-            
-            // Replace template placeholder with actual content
             const processedHtml = html.replace('{{rows}}', await getHtmlRows());
-            
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(processedHtml);
         } catch (err) {
@@ -76,12 +94,73 @@ async function handleRequest(req, res) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Error loading index.html');
         }
+    } else if (req.url === '/add' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+            try {
+                const { text } = querystring.parse(body);
+                if (text && text.trim() !== '') {
+                    await addNewItem(text);
+                    res.writeHead(302, { Location: '/' });
+                    res.end();
+                } else {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Invalid input');
+                }
+            } catch (error) {
+                console.error(error);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Server error');
+            }
+        });
+    } else if (req.url.startsWith('/delete/') && req.method === 'GET') {
+        try {
+            const id = parseInt(req.url.split('/')[2]);
+            if (isNaN(id)) {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Invalid ID');
+                return;
+            }
+            await deleteItem(id);
+            res.writeHead(302, { Location: '/' });
+            res.end();
+        } catch (error) {
+            console.error(error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Server error');
+        }
+    } else if (req.url === '/update' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+            try {
+                const { id, text } = querystring.parse(body);
+                const itemId = parseInt(id);
+                if (isNaN(itemId) {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Invalid ID');
+                    return;
+                }
+                if (text && text.trim() !== '') {
+                    await updateItem(itemId, text);
+                    res.writeHead(302, { Location: '/' });
+                    res.end();
+                } else {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Invalid input');
+                }
+            } catch (error) {
+                console.error(error);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Server error');
+            }
+        });
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');
     }
 }
 
-// Create and start server
 const server = http.createServer(handleRequest);
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
