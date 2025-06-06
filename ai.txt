@@ -1,2 +1,2 @@
-Добавь в код возможность добавления новых элементов в To Do List.
+Add to the code the ability to add new items to the To Do List.
 *Код*
