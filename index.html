@@ -21,12 +21,6 @@
         #todoList th {
             background-color: #f0f0f0;
         }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
         .add-form {
             margin-top: 20px;
             width: 70%;
@@ -65,38 +59,21 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
     function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
+        const input = document.getElementById('newItem');
+        const text = input.value.trim();
+        if (!text) return;
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
+        fetch('/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        })
+        .then(response => {
+            if (response.ok) location.reload();
+        });
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+        input.value = '';
     }
 </script>
 
