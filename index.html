@@ -5,41 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>To-Do List</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
-        }
+        /* ... (existing styles unchanged) ... */
     </style>
 </head>
 <body>
@@ -66,18 +32,26 @@
 
 <script>
     let items = [];
-    let nextId = 1;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const rows = document.querySelectorAll('#listBody tr');
+        rows.forEach(row => {
+            const id = parseInt(row.cells[0].textContent);
+            const text = row.cells[1].textContent;
+            items.push({ id, text });
+        });
+    });
 
     function renderList() {
         const listBody = document.getElementById('listBody');
         listBody.innerHTML = '';
 
-        items.forEach((item, index) => {
+        items.forEach(item => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${index + 1}</td>
+                <td>${item.id}</td>
                 <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
+                <td><button onclick="removeItem(${item.id})">Remove</button></td>
             `;
             listBody.appendChild(row);
         });
@@ -88,15 +62,34 @@
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: newItemText })
+            })
+            .then(response => response.json())
+            .then(newItem => {
+                items.push(newItem);
+                newItemInput.value = '';
+                renderList();
+            })
+            .catch(error => console.error('Error:', error));
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    function removeItem(id) {
+        fetch(`/remove/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => {
+            if (response.ok) {
+                items = items.filter(item => item.id !== id);
+                renderList();
+            }
+        })
+        .catch(error => console.error('Error:', error));
     }
 </script>
 

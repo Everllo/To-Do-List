@@ -11,64 +11,72 @@ const dbConfig = {
     user: 'root',
     password: '',
     database: 'todolist',
-  };
+};
 
-
-  async function retrieveListItems() {
+async function retrieveListItems() {
     try {
-      // Create a connection to the database
-      const connection = await mysql.createConnection(dbConfig);
-      
-      // Query to select all items from the database
-      const query = 'SELECT id, text FROM items';
-      
-      // Execute the query
-      const [rows] = await connection.execute(query);
-      
-      // Close the connection
-      await connection.end();
-      
-      // Return the retrieved items as a JSON array
-      return rows;
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'SELECT id, text FROM items';
+        const [rows] = await connection.execute(query);
+        await connection.end();
+        return rows;
     } catch (error) {
-      console.error('Error retrieving list items:', error);
-      throw error; // Re-throw the error
+        console.error('Error retrieving list items:', error);
+        throw error;
     }
-  }
+}
 
-// Stub function for generating HTML rows
 async function getHtmlRows() {
-    // Example data - replace with actual DB data later
-    /*
-    const todoItems = [
-        { id: 1, text: 'First todo item' },
-        { id: 2, text: 'Second todo item' }
-    ];*/
-
     const todoItems = await retrieveListItems();
-
-    // Generate HTML for each item
     return todoItems.map(item => `
         <tr>
             <td>${item.id}</td>
             <td>${item.text}</td>
-            <td><button class="delete-btn">×</button></td>
+            <td><button onclick="removeItem(${item.id})">Remove</button></td>
         </tr>
     `).join('');
 }
 
-// Modified request handler with template replacement
+async function handleAddRequest(req) {
+    /* ... unchanged from previous branch ... */
+}
+
+// Обработка DELETE запроса для удаления элемента
+async function handleRemoveRequest(id) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        await connection.execute('DELETE FROM items WHERE id = ?', [id]);
+        await connection.end();
+        return true;
+    } catch (error) {
+        console.error('Error removing item:', error);
+        throw error;
+    }
+}
+
 async function handleRequest(req, res) {
-    if (req.url === '/') {
+    if (req.url === '/add' && req.method === 'POST') {
+        /* ... unchanged from previous branch ... */
+    } 
+    else if (req.url.startsWith('/remove/') && req.method === 'DELETE') {
+        const id = req.url.split('/')[2];
+        try {
+            await handleRemoveRequest(id);
+            res.writeHead(200);
+            res.end();
+        } catch (err) {
+            console.error(err);
+            res.writeHead(500);
+            res.end('Error removing item');
+        }
+    }
+    else if (req.url === '/' && req.method === 'GET') {
         try {
             const html = await fs.promises.readFile(
                 path.join(__dirname, 'index.html'), 
                 'utf8'
             );
-            
-            // Replace template placeholder with actual content
             const processedHtml = html.replace('{{rows}}', await getHtmlRows());
-            
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(processedHtml);
         } catch (err) {
@@ -82,6 +90,5 @@ async function handleRequest(req, res) {
     }
 }
 
-// Create and start server
 const server = http.createServer(handleRequest);
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
