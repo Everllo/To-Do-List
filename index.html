@@ -34,6 +34,10 @@
             padding: 8px;
             width: 20%;
         }
+        .editable {
+            cursor: pointer;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -55,16 +59,23 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', () => {
-                const id = button.dataset.id;
-                fetch(`/delete?id=${id}`, {
-                    method: 'DELETE'
-                }).then(response => {
-                    if (response.ok) {
-                        location.reload();
-                    }
-                });
+        document.querySelectorAll('.editable').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const id = cell.dataset.id;
+                const oldText = cell.textContent;
+                const newText = prompt('Edit item:', oldText);
+
+                if (newText && newText.trim() !== '' && newText !== oldText) {
+                    fetch('/edit', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, newText })
+                    }).then(response => {
+                        if (response.ok) {
+                            location.reload();
+                        }
+                    });
+                }
             });
         });
     });
@@ -72,4 +83,3 @@
 
 </body>
 </html>
-

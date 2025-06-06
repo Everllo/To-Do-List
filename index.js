@@ -25,8 +25,8 @@ async function getHtmlRows() {
     return todoItems.map(item => `
         <tr>
             <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button class="delete-btn" data-id="${item.id}">×</button></td>
+            <td class="editable" data-id="${item.id}">${item.text}</td>
+            <td><button disabled>✎</button></td>
         </tr>
     `).join('');
 }
@@ -47,18 +47,22 @@ async function handleRequest(req, res) {
             res.writeHead(500);
             res.end('Error loading HTML');
         }
-    } else if (parsedUrl.pathname === '/delete' && req.method === 'DELETE') {
-        const id = parsedUrl.query.id;
-        try {
-            const connection = await mysql.createConnection(dbConfig);
-            await connection.execute('DELETE FROM items WHERE id = ?', [id]);
-            await connection.end();
-            res.writeHead(200);
-            res.end('Deleted');
-        } catch (err) {
-            res.writeHead(500);
-            res.end('Delete error');
-        }
+    } else if (req.url === '/edit' && req.method === 'PUT') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+            const { id, newText } = JSON.parse(body);
+            try {
+                const connection = await mysql.createConnection(dbConfig);
+                await connection.execute('UPDATE items SET text = ? WHERE id = ?', [newText, id]);
+                await connection.end();
+                res.writeHead(200);
+                res.end('Updated');
+            } catch (err) {
+                res.writeHead(500);
+                res.end('Update error');
+            }
+        });
     } else {
         res.writeHead(404);
         res.end('Not found');
