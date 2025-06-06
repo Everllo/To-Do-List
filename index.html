@@ -21,12 +21,6 @@
         #todoList th {
             background-color: #f0f0f0;
         }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
         .add-form {
             margin-top: 20px;
             width: 70%;
@@ -39,6 +33,10 @@
         .add-form button {
             padding: 8px;
             width: 20%;
+        }
+        .editable {
+            cursor: pointer;
+            color: #007bff;
         }
     </style>
 </head>
@@ -59,45 +57,28 @@
     </tbody>
 </table>
 
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-</div>
-
 <script>
-    let items = [];
-    let nextId = 1;
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.editable').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const id = cell.dataset.id;
+                const oldText = cell.textContent;
+                const newText = prompt('Edit item:', oldText);
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
+                if (newText && newText.trim() !== '' && newText !== oldText) {
+                    fetch('/edit', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id, newText })
+                    }).then(response => {
+                        if (response.ok) {
+                            location.reload();
+                        }
+                    });
+                }
+            });
         });
-    }
-
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
+    });
 </script>
 
 </body>
