@@ -68,6 +68,16 @@
     let items = [];
     let nextId = 1;
 
+    // Заполнение массива items при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        const rows = document.querySelectorAll('#listBody tr');
+        rows.forEach(row => {
+            const id = row.cells[0].textContent;
+            const text = row.cells[1].textContent;
+            items.push({ id, text });
+        });
+    });
+
     function renderList() {
         const listBody = document.getElementById('listBody');
         listBody.innerHTML = '';
@@ -75,7 +85,7 @@
         items.forEach((item, index) => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${index + 1}</td>
+                <td>${item.id}</td>
                 <td>${item.text}</td>
                 <td><button onclick="removeItem(${index})">Remove</button></td>
             `;
@@ -88,9 +98,21 @@
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            // Отправка данных на сервер
+            fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: newItemText })
+            })
+            .then(response => response.json())
+            .then(newItem => {
+                items.push(newItem);
+                newItemInput.value = '';
+                renderList();
+            })
+            .catch(error => console.error('Error:', error));
         }
     }
 
