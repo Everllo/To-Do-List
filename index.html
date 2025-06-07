@@ -7,11 +7,14 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
         }
         #todoList {
+            width: 100%;
             border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
+            margin: 20px 0;
         }
         #todoList th, #todoList td {
             border: 1px solid #ddd;
@@ -19,130 +22,107 @@
             text-align: left;
         }
         #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
+            background-color: #f2f2f2;
         }
         .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
         }
-        .add-form input[type="text"] {
+        #newItem {
+            flex: 1;
             padding: 8px;
-            width: 70%;
         }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
         }
-        #errorMessage {
+        .error {
             color: red;
             margin-top: 5px;
         }
     </style>
 </head>
 <body>
+    <h1>To-Do List</h1>
+    
+    <div class="add-form">
+        <input type="text" id="newItem" placeholder="Enter new task">
+        <button onclick="addItem()">Add Item</button>
+    </div>
+    <div id="errorMessage" class="error"></div>
+    
+    <table id="todoList">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Task</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="listBody">
+            {{rows}}
+        </tbody>
+    </table>
 
-<h2 style="text-align: center;">To-Do List</h2>
-
-<table id="todoList">
-    <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
-
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
-    <div id="errorMessage"></div>
-</div>
-
-<script>
-    async function renderList() {
-        try {
-            const response = await fetch('/');
-            const html = await response.text();
-            document.getElementById('listBody').innerHTML = 
-                html.match(/<tbody id="listBody">([\s\S]*?)<\/tbody>/)[1];
-        } catch (error) {
-            console.error('Error rendering list:', error);
-            document.getElementById('errorMessage').textContent = 'Error loading list';
-        }
-    }
-
-    async function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const errorMessage = document.getElementById('errorMessage');
-        const newItemText = newItemInput.value.trim();
-
-        errorMessage.textContent = '';
+    <script>
+        const API_URL = 'http://localhost:3000';
         
-        if (!newItemText) {
-            errorMessage.textContent = 'Please enter some text';
-            return;
-        }
-
-        try {
-            const response = await fetch('/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ text: newItemText })
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                newItemInput.value = '';
-                await renderList();
-            } else {
-                errorMessage.textContent = 'Failed to add item: ' + (result.error || 'Unknown error');
+        async function loadTasks() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                document.getElementById('listBody').innerHTML = 
+                    doc.getElementById('listBody').innerHTML;
+            } catch (error) {
+                showError('Failed to load tasks: ' + error.message);
             }
-        } catch (error) {
-            console.error('Error adding item:', error);
-            errorMessage.textContent = 'Error adding item: ' + error.message;
         }
-    }
 
-    async function removeItem(index) {
-        // Implementation will be added in next feature
-        try {
-            const response = await fetch('/delete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ index })
-            });
+        async function addItem() {
+            const input = document.getElementById('newItem');
+            const text = input.value.trim();
             
-            const result = await response.json();
-            if (result.success) {
-                await renderList();
-            } else {
-                document.getElementById('errorMessage').textContent = 
-                    'Failed to delete item: ' + (result.error || 'Unknown error');
+            if (!text) {
+                showError('Please enter a task');
+                return;
             }
-        } catch (error) {
-            console.error('Error deleting item:', error);
-            document.getElementById('errorMessage').textContent = 
-                'Error deleting item: ' + error.message;
+
+            try {
+                const response = await fetch(`${API_URL}/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({text})
+                });
+
+                if (!response.ok) throw new Error('Add request failed');
+                
+                const result = await response.json();
+                if (result.success) {
+                    input.value = '';
+                    await loadTasks();
+                } else {
+                    throw new Error(result.error || 'Failed to add item');
+                }
+            } catch (error) {
+                showError('Error adding item: ' + error.message);
+            }
         }
-    }
 
-    document.addEventListener('DOMContentLoaded', renderList);
-</script>
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            setTimeout(() => errorElement.textContent = '', 5000);
+        }
 
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadTasks);
+    </script>
 </body>
 </html>
