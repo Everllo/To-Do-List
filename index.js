@@ -2,7 +2,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-const url = require('url');
 const PORT = 3000;
 
 // Database connection settings
@@ -16,7 +15,7 @@ const dbConfig = {
 async function retrieveListItems() {
     try {
         const connection = await mysql.createConnection(dbConfig);
-        const query = 'SELECT id, text FROM items';
+        const query = 'SELECT id, text FROM items ORDER BY id DESC';
         const [rows] = await connection.execute(query);
         await connection.end();
         return rows;
@@ -32,40 +31,15 @@ async function addListItem(text) {
         const query = 'INSERT INTO items (text) VALUES (?)';
         const [result] = await connection.execute(query, [text]);
         await connection.end();
-        return result.insertId;
+        return { id: result.insertId, text };
     } catch (error) {
         console.error('Error adding list item:', error);
         throw error;
     }
 }
 
-async function deleteListItem(id) {
-    try {
-        const connection = await mysql.createConnection(dbConfig);
-        const query = 'DELETE FROM items WHERE id = ?';
-        await connection.execute(query, [id]);
-        await connection.end();
-    } catch (error) {
-        console.error('Error deleting list item:', error);
-        throw error;
-    }
-}
-
-async function getHtmlRows() {
-    const todoItems = await retrieveListItems();
-    return todoItems.map(item => `
-        <tr>
-            <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button onclick="removeItem(${item.id})">Remove</button></td>
-        </tr>
-    `).join('');
-}
-
 async function handleRequest(req, res) {
-    const parsedUrl = url.parse(req.url, true);
-    
-    if (req.method === 'GET' && parsedUrl.pathname === '/') {
+    if (req.method === 'GET' && req.url === '/') {
         try {
             const html = await fs.promises.readFile(
                 path.join(__dirname, 'index.html'), 
@@ -80,7 +54,7 @@ async function handleRequest(req, res) {
             res.end('Error loading index.html');
         }
     } 
-    else if (req.method === 'POST' && parsedUrl.pathname === '/add') {
+    else if (req.method === 'POST' && req.url === '/add') {
         let body = '';
         req.on('data', chunk => {
             body += chunk.toString();
@@ -88,31 +62,13 @@ async function handleRequest(req, res) {
         req.on('end', async () => {
             try {
                 const { text } = JSON.parse(body);
-                await addListItem(text);
+                const newItem = await addListItem(text);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true }));
+                res.end(JSON.stringify(newItem));
             } catch (error) {
                 console.error(error);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, error: 'Failed to add item' }));
-            }
-        });
-    }
-    else if (req.method === 'POST' && parsedUrl.pathname === '/delete') {
-        let body = '';
-        req.on('data', chunk => {
-            body += chunk.toString();
-        });
-        req.on('end', async () => {
-            try {
-                const { id } = JSON.parse(body);
-                await deleteListItem(id);
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true }));
-            } catch (error) {
-                console.error(error);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: false, error: 'Failed to delete item' }));
+                res.end(JSON.stringify({ error: 'Failed to add item' }));
             }
         });
     }
@@ -120,6 +76,17 @@ async function handleRequest(req, res) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');
     }
+}
+
+async function getHtmlRows() {
+    const todoItems = await retrieveListItems();
+    return todoItems.map(item => `
+        <tr data-id="${item.id}">
+            <td>${item.id}</td>
+            <td>${item.text}</td>
+            <td><button class="delete-btn" onclick="removeItem(${item.id})">×</button></td>
+        </tr>
+    `).join('');
 }
 
 const server = http.createServer(handleRequest);
