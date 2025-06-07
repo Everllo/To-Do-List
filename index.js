@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-const url = require('url'); // Добавляем модуль url для парсинга запросов
+const url = require('url');
 
 const PORT = 3000;
 
@@ -35,6 +35,19 @@ async function addListItem(text) {
         return { id: result.insertId, text };
     } catch (error) {
         console.error('Ошибка при добавлении элемента:', error);
+        throw error;
+    }
+}
+
+async function deleteListItem(id) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'DELETE FROM items WHERE id = ?';
+        const [result] = await connection.execute(query, [id]);
+        await connection.end();
+        return result.affectedRows > 0;
+    } catch (error) {
+        console.error('Ошибка при удалении элемента:', error);
         throw error;
     }
 }
@@ -87,6 +100,27 @@ async function handleRequest(req, res) {
                 res.end(JSON.stringify({ error: 'Не удалось добавить элемент' }));
             }
         });
+    } else if (parsedUrl.pathname === '/delete' && req.method === 'DELETE') {
+        const id = parsedUrl.query.id;
+        if (!id || isNaN(id)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Некорректный или отсутствующий ID' }));
+            return;
+        }
+        try {
+            const success = await deleteListItem(id);
+            if (success) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ message: 'Элемент удален' }));
+            } else {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Элемент не найден' }));
+            }
+        } catch (err) {
+            console.error(err);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Не удалось удалить элемент' }));
+        }
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Маршрут не найден');
