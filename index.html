@@ -65,25 +65,18 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
+    async function renderList() {
+        try {
+            const response = await fetch('/');
+            const html = await response.text();
+            document.body.innerHTML = html;
+        } catch (error) {
+            console.error('Error loading list:', error);
+        }
     }
 
     function addItem() {
+        // Keep the original client-side only add functionality
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
@@ -94,10 +87,28 @@
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function removeItem(id) {
+        try {
+            const response = await fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                await renderList();
+            }
+        } catch (error) {
+            console.error('Error removing item:', error);
+        }
     }
+
+    // Update the template in getHtmlRows() in index.js to include the ID in the remove button:
+    // Change this line in getHtmlRows():
+    // <td><button class="delete-btn" onclick="removeItem(${item.id})">×</button></td>
 </script>
 
 </body>
