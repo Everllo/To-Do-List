@@ -1,0 +1,2 @@
+Add to the code the ability to delete items from the list.
+*Код*
