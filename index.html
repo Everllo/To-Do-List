@@ -25,7 +25,10 @@
             width: 5%;
         }
         #todoList th:nth-child(2) {
-            width: 90%;
+            width: 80%;
+        }
+        #todoList th:last-child {
+            width: 15%;
         }
         .add-form {
             margin-top: 20px;
@@ -39,6 +42,11 @@
         .add-form button {
             padding: 8px;
             width: 20%;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
         }
     </style>
 </head>
@@ -61,42 +69,112 @@
 
 <div class="add-form">
     <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
+    <button id="addBtn">Add</button>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
+    document.addEventListener('DOMContentLoaded', function() {
+        const addBtn = document.getElementById('addBtn');
         const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        
+        // Обработчик добавления
+        addBtn.addEventListener('click', addItem);
+        newItemInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addItem();
+        });
+        
+        // Делегирование событий для кнопок удаления и редактирования
+        document.getElementById('listBody').addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.getAttribute('data-id');
+                removeItem(id);
+            }
+            
+            if (e.target.classList.contains('edit-btn')) {
+                const id = e.target.getAttribute('data-id');
+                const text = e.target.getAttribute('data-text');
+                startEdit(id, text, e.target.closest('tr'));
+            }
+            
+            if (e.target.classList.contains('save-btn')) {
+                const id = e.target.getAttribute('data-id');
+                const input = e.target.closest('tr').querySelector('.edit-input');
+                saveEdit(id, input.value);
+            }
+            
+            if (e.target.classList.contains('cancel-btn')) {
+                location.reload(); // Просто перезагружаем страницу для простоты
+            }
+        });
+    });
+    
+    async function addItem() {
+        const newItemInput = document.getElementById('newItem');
+        const text = newItemInput.value.trim();
+        
+        if (text) {
+            try {
+                const response = await fetch('/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text })
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error adding item:', error);
+            }
         }
     }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    
+    async function removeItem(id) {
+        try {
+            const response = await fetch(`/delete/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (error) {
+            console.error('Error deleting item:', error);
+        }
+    }
+    
+    function startEdit(id, text, row) {
+        row.innerHTML = `
+            <td>${row.cells[0].textContent}</td>
+            <td><input type="text" class="edit-input" value="${text}"></td>
+            <td>
+                <button class="save-btn" data-id="${id}">Save</button>
+                <button class="cancel-btn">Cancel</button>
+            </td>
+        `;
+        row.querySelector('.edit-input').focus();
+    }
+    
+    async function saveEdit(id, newText) {
+        if (newText.trim()) {
+            try {
+                const response = await fetch(`/edit/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: newText.trim() })
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error updating item:', error);
+            }
+        }
     }
 </script>
 
