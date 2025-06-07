@@ -1,75 +1,97 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-<<<<<<< HEAD
+const mysql = require('mysql2/promise');
+const url = require('url'); // Добавляем модуль url для парсинга запросов
 
 const PORT = 3000;
 
-// Пустой массив для задач
-let todoItems = [];
-let nextId = 1;
+const dbConfig = {
+    host: 'localhost',
+    user: 'root',
+    password: '',
+    database: 'todolist',
+};
 
-// Генерация HTML строк для таблицы (без данных пока)
-=======
-const url = require('url');
-const qs = require('querystring');
+async function retrieveListItems() {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'SELECT id, text FROM items';
+        const [rows] = await connection.execute(query);
+        await connection.end();
+        return rows;
+    } catch (error) {
+        console.error('Ошибка при получении элементов:', error);
+        throw error;
+    }
+}
 
-const PORT = 3000;
+async function addListItem(text) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'INSERT INTO items (text) VALUES (?)';
+        const [result] = await connection.execute(query, [text]);
+        await connection.end();
+        return { id: result.insertId, text };
+    } catch (error) {
+        console.error('Ошибка при добавлении элемента:', error);
+        throw error;
+    }
+}
 
-// Хранилище задач в памяти
-let todoItems = [];
-let nextId = 1;
-
-// Генерация HTML строк для таблицы
->>>>>>> 3749202 (Add task addition feature)
-function getHtmlRows() {
+async function getHtmlRows() {
+    const todoItems = await retrieveListItems();
     return todoItems.map(item => `
         <tr>
             <td>${item.id}</td>
-            <td><span contenteditable="true" data-id="${item.id}">${item.text}</span></td>
+            <td>${item.text}</td>
             <td><button class="delete-btn" data-id="${item.id}">×</button></td>
         </tr>
     `).join('');
 }
 
-// Обработка запросов
 async function handleRequest(req, res) {
     const parsedUrl = url.parse(req.url, true);
 
-    if (req.method === 'GET' && parsedUrl.pathname === '/') {
+    if (req.url === '/' && req.method === 'GET') {
         try {
             const html = await fs.promises.readFile(
-                path.join(__dirname, 'index.html'),
+                path.join(__dirname, 'index.html'), 
                 'utf8'
             );
-            const processedHtml = html.replace('{{rows}}', getHtmlRows());
+            const processedHtml = html.replace('{{rows}}', await getHtmlRows());
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(processedHtml);
         } catch (err) {
             console.error(err);
             res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Error loading index.html');
+            res.end('Ошибка загрузки index.html');
         }
-<<<<<<< HEAD
-=======
-    } else if (req.method === 'POST' && parsedUrl.pathname === '/delete') {
+    } else if (req.url === '/add' && req.method === 'POST') {
         let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', () => {
-            const { id } = qs.parse(body);
-            if (id) {
-                todoItems = todoItems.filter(item => item.id !== parseInt(id));
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+            try {
+                const { text } = JSON.parse(body);
+                if (!text || typeof text !== 'string' || text.trim() === '') {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Некорректный или отсутствующий текст' }));
+                    return;
+                }
+                const newItem = await addListItem(text.trim());
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(newItem));
+            } catch (err) {
+                console.error(err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Не удалось добавить элемент' }));
             }
-            res.writeHead(302, { 'Location': '/' });
-            res.end();
         });
->>>>>>> 3749202 (Add task addition feature)
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Route not found');
+        res.end('Маршрут не найден');
     }
 }
 
-// Создание и запуск сервера
 const server = http.createServer(handleRequest);
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));
