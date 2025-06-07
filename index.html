@@ -1,102 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
+    <title>Список задач</title>
     <style>
-        table {
-            border-collapse: collapse;
-            width: 50%;
-            margin: 20px auto;
-        }
-
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #f2f2f2;
-        }
-
-        .delete-btn {
-            cursor: pointer;
-            color: red;
-            border: none;
-            background: none;
-            font-size: 16px;
-        }
-
-        form {
-            text-align: center;
-            margin: 20px;
-        }
+        table { border-collapse: collapse; width: 100%; max-width: 600px; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .delete-btn { cursor: pointer; background: #ff4444; color: white; border: none; padding: 5px 10px; }
+        form { margin: 20px 0; }
+        input[type="text"] { padding: 5px; width: 200px; }
+        button { padding: 5px 10px; }
     </style>
 </head>
-
 <body>
-    <h1 style="text-align: center;">To-Do List</h1>
-    <form id="addForm" method="POST" action="/add">
-        <input type="text" name="text" placeholder="Enter a task" required>
-        <button type="submit">Add</button>
+    <h1>Список задач</h1>
+    <form id="addForm">
+        <input type="text" id="todoInput" placeholder="Введите новую задачу" required>
+        <button type="submit">Добавить</button>
     </form>
     <table>
         <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
+            <th>Номер</th>
+            <th>Текст</th>
+            <th>Действие</th>
         </tr>
         {{rows}}
     </table>
-
     <script>
-        // Обработка добавления задачи
         document.getElementById('addForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            await fetch('/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams(formData).toString()
-            });
-            location.reload();
-        });
-
-        // Обработка удаления задачи
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', async () => {
-                    const id = button.getAttribute('data-id');
-                    await fetch('/delete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `id=${id}`
-                    });
-                    location.reload();
+            const text = document.getElementById('todoInput').value;
+            try {
+                const response = await fetch('/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
                 });
-            });
-
-            // Обработка редактирования задачи
-            document.querySelectorAll('span[contenteditable]').forEach(span => {
-                span.addEventListener('blur', async () => {
-                    const id = span.getAttribute('data-id');
-                    const text = span.textContent.trim();
-                    if (text) {
-                        await fetch('/edit', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `id=${id}&text=${text}`
-                        });
-                        location.reload();
-                    }
-                });
-            });
+                const newItem = await response.json();
+                if (response.ok) {
+                    const row = `
+                        <tr>
+                            <td>${newItem.id}</td>
+                            <td>${newItem.text}</td>
+                            <td><button class="delete-btn" data-id="${newItem.id}">×</button></td>
+                        </tr>
+                    `;
+                    document.querySelector('table').insertAdjacentHTML('beforeend', row);
+                    document.getElementById('todoInput').value = '';
+                } else {
+                    alert(newItem.error || 'Не удалось добавить задачу');
+                }
+            } catch (err) {
+                alert('Ошибка при добавлении задачи');
+            }
         });
     </script>
 </body>
-
 </html>
