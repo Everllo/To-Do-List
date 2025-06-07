@@ -65,39 +65,51 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
+    // Add this to your existing script
+    function setupEditHandlers() {
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const id = this.getAttribute('data-id');
+                const textCell = document.querySelector(`.item-text[data-id="${id}"]`);
+                const currentText = textCell.textContent;
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
+                const newText = prompt('Edit item:', currentText);
+                if (newText && newText !== currentText) {
+                    try {
+                        const response = await fetch('/update', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ id: id, text: newText })
+                        });
 
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
+                        const result = await response.json();
+                        if (result.success) {
+                            await renderList();
+                        }
+                    } catch (error) {
+                        console.error('Error updating item:', error);
+                    }
+                }
+            });
         });
     }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+    // Modify your existing renderList function
+    async function renderList() {
+        try {
+            const response = await fetch('/');
+            const html = await response.text();
+            document.body.innerHTML = html;
+            setupEditHandlers(); // Set up event listeners after rendering
+        } catch (error) {
+            console.error('Error loading list:', error);
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
+    // Initial render
+    document.addEventListener('DOMContentLoaded', renderList);
 </script>
 
 </body>
