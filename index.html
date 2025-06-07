@@ -40,6 +40,10 @@
             padding: 8px;
             width: 20%;
         }
+        #errorMessage {
+            color: red;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -62,42 +66,82 @@
 <div class="add-form">
     <input type="text" id="newItem" placeholder="Enter new item">
     <button onclick="addItem()">Add</button>
+    <div id="errorMessage"></div>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+    async function renderList() {
+        try {
+            const response = await fetch('/');
+            const html = await response.text();
+            document.getElementById('listBody').innerHTML = 
+                html.match(/<tbody id="listBody">([\s\S]*?)<\/tbody>/)[1];
+        } catch (error) {
+            console.error('Error rendering list:', error);
+            document.getElementById('errorMessage').textContent = 'Error loading list';
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function addItem() {
+        const newItemInput = document.getElementById('newItem');
+        const errorMessage = document.getElementById('errorMessage');
+        const newItemText = newItemInput.value.trim();
+
+        errorMessage.textContent = '';
+        
+        if (!newItemText) {
+            errorMessage.textContent = 'Please enter some text';
+            return;
+        }
+
+        try {
+            const response = await fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: newItemText })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                newItemInput.value = '';
+                await renderList();
+            } else {
+                errorMessage.textContent = 'Failed to add item: ' + (result.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Error adding item:', error);
+            errorMessage.textContent = 'Error adding item: ' + error.message;
+        }
     }
+
+    async function removeItem(index) {
+        // Implementation will be added in next feature
+        try {
+            const response = await fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ index })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                await renderList();
+            } else {
+                document.getElementById('errorMessage').textContent = 
+                    'Failed to delete item: ' + (result.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            document.getElementById('errorMessage').textContent = 
+                'Error deleting item: ' + error.message;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', renderList);
 </script>
 
 </body>
