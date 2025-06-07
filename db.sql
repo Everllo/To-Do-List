@@ -1,13 +1,14 @@
-CREATE DATABASE IF NOT EXISTS todolist;
+DROP DATABASE IF EXISTS todolist;
+CREATE DATABASE todolist;
 USE todolist;
 
-CREATE TABLE IF NOT EXISTS items (
+CREATE TABLE items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     text VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Optional: Add some initial data for testing
 INSERT INTO items (text) VALUES 
-('First todo item'),
-('Second todo item');
+('Buy groceries'),
+('Finish homework'),
+('Call mom');
