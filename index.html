@@ -29,6 +29,7 @@
         {{rows}}
     </table>
     <script>
+        // Добавление задачи
         document.getElementById('addForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = document.getElementById('todoInput').value;
@@ -54,6 +55,26 @@
                 }
             } catch (err) {
                 alert('Ошибка при добавлении задачи');
+            }
+        });
+
+        // Удаление задачи
+        document.querySelector('table').addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                try {
+                    const response = await fetch(`/delete?id=${id}`, {
+                        method: 'DELETE'
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        e.target.closest('tr').remove();
+                    } else {
+                        alert(result.error || 'Не удалось удалить задачу');
+                    }
+                } catch (err) {
+                    alert('Ошибка при удалении задачи');
+                }
             }
         });
     </script>
