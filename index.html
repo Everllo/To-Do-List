@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
+    <title>Todo List</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,89 +11,113 @@
             margin: 0 auto;
             padding: 20px;
         }
-        #todoList {
+        h1 {
+            text-align: center;
+        }
+        #todo-form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #new-item {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
         }
-        #todoList th, #todoList td {
+        th, td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: left;
         }
-        #todoList th {
+        th {
             background-color: #f2f2f2;
         }
-        .add-form {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+        .delete-btn {
+            background: #f44336;
         }
-        #newItem {
-            flex: 1;
-            padding: 8px;
+        .delete-btn:hover {
+            background: #d32f2f;
         }
-        button {
-            padding: 8px 16px;
-            cursor: pointer;
-        }
-        .error {
+        #error-message {
             color: red;
-            margin-top: 5px;
+            margin: 10px 0;
         }
     </style>
 </head>
 <body>
-    <h1>To-Do List</h1>
+    <h1>Todo List</h1>
     
-    <div class="add-form">
-        <input type="text" id="newItem" placeholder="Enter new task">
-        <button onclick="addItem()">Add Item</button>
+    <div id="todo-form">
+        <input type="text" id="new-item" placeholder="Enter new item">
+        <button id="add-btn">Add Item</button>
     </div>
-    <div id="errorMessage" class="error"></div>
     
-    <table id="todoList">
+    <div id="error-message"></div>
+    
+    <table id="todo-table">
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Task</th>
+                <th>Item</th>
                 <th>Action</th>
             </tr>
         </thead>
-        <tbody id="listBody">
+        <tbody id="items-list">
             {{rows}}
         </tbody>
     </table>
 
     <script>
-        const API_URL = 'http://localhost:3000';
+        const API_BASE_URL = 'http://localhost:3000';
         
-        async function loadTasks() {
+        document.addEventListener('DOMContentLoaded', () => {
+            loadItems();
+            
+            document.getElementById('add-btn').addEventListener('click', addItem);
+            document.getElementById('new-item').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addItem();
+            });
+        });
+
+        async function loadItems() {
             try {
-                const response = await fetch(API_URL);
-                if (!response.ok) throw new Error('Network response was not ok');
+                const response = await fetch(API_BASE_URL);
+                if (!response.ok) throw new Error('Failed to load items');
                 
                 const html = await response.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                document.getElementById('listBody').innerHTML = 
-                    doc.getElementById('listBody').innerHTML;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                document.getElementById('items-list').innerHTML = 
+                    tempDiv.querySelector('#items-list').innerHTML;
             } catch (error) {
-                showError('Failed to load tasks: ' + error.message);
+                showError(error.message);
             }
         }
 
         async function addItem() {
-            const input = document.getElementById('newItem');
+            const input = document.getElementById('new-item');
             const text = input.value.trim();
             
             if (!text) {
-                showError('Please enter a task');
+                showError('Please enter some text');
                 return;
             }
 
             try {
-                const response = await fetch(`${API_URL}/add`, {
+                const response = await fetch(`${API_BASE_URL}/api/items`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -101,28 +125,40 @@
                     body: JSON.stringify({text})
                 });
 
-                if (!response.ok) throw new Error('Add request failed');
-                
-                const result = await response.json();
-                if (result.success) {
-                    input.value = '';
-                    await loadTasks();
-                } else {
-                    throw new Error(result.error || 'Failed to add item');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to add item');
                 }
+
+                input.value = '';
+                await loadItems();
             } catch (error) {
-                showError('Error adding item: ' + error.message);
+                showError(error.message);
+            }
+        }
+
+        async function deleteItem(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete item');
+                
+                await loadItems();
+            } catch (error) {
+                showError(error.message);
             }
         }
 
         function showError(message) {
-            const errorElement = document.getElementById('errorMessage');
+            const errorElement = document.getElementById('error-message');
             errorElement.textContent = message;
             setTimeout(() => errorElement.textContent = '', 5000);
         }
 
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', loadTasks);
+        // Делаем функцию доступной глобально для вызова из HTML
+        window.deleteItem = deleteItem;
     </script>
 </body>
 </html>
