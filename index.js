@@ -11,75 +11,77 @@ const dbConfig = {
     database: 'todolist'
 };
 
-// Добавляем CORS middleware
-const allowCors = (res) => {
+const server = http.createServer(async (req, res) => {
+    // Настройки CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-};
-
-async function retrieveListItems() {
-    const connection = await mysql.createConnection(dbConfig);
-    const [rows] = await connection.execute('SELECT id, text FROM items ORDER BY id');
-    await connection.end();
-    return rows;
-}
-
-async function addListItem(text) {
-    const connection = await mysql.createConnection(dbConfig);
-    await connection.execute('INSERT INTO items (text) VALUES (?)', [text]);
-    await connection.end();
-}
-
-async function handleRequest(req, res) {
-    allowCors(res); // Применяем CORS заголовки
 
     if (req.method === 'OPTIONS') {
-        res.writeHead(204);
+        res.writeHead(200);
         res.end();
         return;
     }
 
     if (req.url === '/' && req.method === 'GET') {
         try {
-            const html = await fs.promises.readFile(path.join(__dirname, 'index.html'), 'utf8');
-            const rows = (await retrieveListItems()).map(item => `
+            const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+            const connection = await mysql.createConnection(dbConfig);
+            const [rows] = await connection.query('SELECT * FROM items ORDER BY id');
+            connection.end();
+
+            const itemsHtml = rows.map(item => `
                 <tr>
                     <td>${item.id}</td>
                     <td>${item.text}</td>
-                    <td><button onclick="removeItem(${item.id})">×</button></td>
+                    <td>
+                        <button onclick="deleteItem(${item.id})">Delete</button>
+                    </td>
                 </tr>
             `).join('');
-            
+
+            const responseHtml = html.replace('{{rows}}', itemsHtml);
             res.writeHead(200, {'Content-Type': 'text/html'});
-            res.end(html.replace('{{rows}}', rows));
-        } catch (error) {
-            console.error(error);
+            res.end(responseHtml);
+        } catch (err) {
+            console.error(err);
             res.writeHead(500).end('Server Error');
         }
-    } 
-    else if (req.url === '/add' && req.method === 'POST') {
+    }
+    else if (req.url === '/api/items' && req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
             try {
                 const {text} = JSON.parse(body);
-                await addListItem(text);
-                res.writeHead(200, {'Content-Type': 'application/json'});
-                res.end(JSON.stringify({success: true}));
-            } catch (error) {
-                console.error(error);
-                res.writeHead(500).end(JSON.stringify({
-                    success: false,
-                    error: 'Failed to add item'
+                if (!text || text.trim() === '') {
+                    res.writeHead(400).end(JSON.stringify({error: 'Text is required'}));
+                    return;
+                }
+
+                const connection = await mysql.createConnection(dbConfig);
+                const [result] = await connection.execute(
+                    'INSERT INTO items (text) VALUES (?)',
+                    [text.trim()]
+                );
+                connection.end();
+
+                res.writeHead(201, {'Content-Type': 'application/json'});
+                res.end(JSON.stringify({
+                    id: result.insertId,
+                    text: text.trim()
                 }));
+            } catch (err) {
+                console.error(err);
+                res.writeHead(500).end(JSON.stringify({error: 'Database error'}));
             }
         });
-    } 
+    }
     else {
         res.writeHead(404).end('Not Found');
     }
-}
+});
 
-const server = http.createServer(handleRequest);
-server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+server.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+});
