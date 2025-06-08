@@ -61,43 +61,36 @@
 
 <div class="add-form">
     <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
+    <button id="addButton">Add</button>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
+    document.getElementById('addButton').addEventListener('click', async () => {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
-        }
-    }
+            try {
+                const response = await fetch('/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: newItemText })
+                });
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
-    }
+                if (response.ok) {
+                    // Reload the page to show the updated list
+                    window.location.reload();
+                } else {
+                    alert('Failed to add item');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to add item');
+            }
+        }
+    });
 </script>
 
 </body>
