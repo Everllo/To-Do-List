@@ -3,100 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
+    <title>Delete Item</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            text-align: center;
         }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
+        .delete-form {
+            margin-top: 50px;
+            width: 50%;
+            margin: 50px auto;
         }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
+        .delete-form input[type="number"] {
             padding: 8px;
-            text-align: left;
+            width: 60%;
         }
-        #todoList th {
-            background-color: #f0f0f0;
+        .delete-form button {
+            padding: 8px;
+            width: 30%;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            cursor: pointer;
         }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
+        .message {
             margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
+            color: green;
         }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
+        .error {
+            color: red;
         }
     </style>
 </head>
 <body>
 
-<h2 style="text-align: center;">To-Do List</h2>
+<h2>Delete Item</h2>
 
-<table id="todoList">
-    <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
-
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
+<div class="delete-form">
+    <input type="number" id="itemId" placeholder="Enter item ID to delete">
+    <button onclick="deleteItem()">Delete</button>
+    <div id="message" class="message"></div>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
+    function deleteItem() {
+        const itemIdInput = document.getElementById('itemId');
+        const messageDiv = document.getElementById('message');
+        const itemId = itemIdInput.value.trim();
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        if (itemId) {
+            fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: itemId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.textContent = `Item ${itemId} deleted successfully!`;
+                    messageDiv.className = 'message';
+                    itemIdInput.value = '';
+                    setTimeout(() => {
+                        messageDiv.textContent = '';
+                    }, 2000);
+                } else {
+                    messageDiv.textContent = `Error deleting item ${itemId}`;
+                    messageDiv.className = 'message error';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                messageDiv.textContent = `Error deleting item ${itemId}`;
+                messageDiv.className = 'message error';
+            });
+        } else {
+            messageDiv.textContent = 'Please enter an item ID';
+            messageDiv.className = 'message error';
         }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
     }
 </script>
 
