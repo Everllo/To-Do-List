@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>To-Do List</title>
     <style>
         body {
@@ -59,36 +59,10 @@
     </tbody>
 </table>
 
-<div class="add-form">
-    <form id="addForm">
-        <input type="text" id="newItem" name="text" placeholder="Enter new item" required>
-        <button type="submit">Add</button>
-    </form>
-</div>
-
-<script>
-    document.getElementById('addForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const input = document.getElementById('newItem');
-        const text = input.value.trim();
-
-        if (text) {
-            const response = await fetch('/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ text })
-            });
-
-            if (response.ok) {
-                window.location.reload();
-            } else {
-                alert('Failed to add item');
-            }
-        }
-    });
-</script>
+<form class="add-form" method="POST" action="/add">
+    <input type="text" name="text" placeholder="Enter new item" required />
+    <button type="submit">Add</button>
+</form>
 
 </body>
 </html>
