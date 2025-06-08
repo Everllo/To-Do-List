@@ -3,100 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To-Do List</title>
+    <title>Edit Item</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            text-align: center;
         }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
+        .edit-form {
+            margin-top: 50px;
+            width: 50%;
+            margin: 50px auto;
         }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
+        .edit-form input {
             padding: 8px;
-            text-align: left;
+            margin: 5px 0;
+            width: 60%;
         }
-        #todoList th {
-            background-color: #f0f0f0;
+        .edit-form button {
+            padding: 8px;
+            width: 30%;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
         }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
+        .message {
             margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
+            color: green;
         }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
+        .error {
+            color: red;
         }
     </style>
 </head>
 <body>
 
-<h2 style="text-align: center;">To-Do List</h2>
+<h2>Edit Item</h2>
 
-<table id="todoList">
-    <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
-
-<div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
-    <button onclick="addItem()">Add</button>
+<div class="edit-form">
+    <input type="number" id="itemId" placeholder="Enter item ID"><br>
+    <input type="text" id="newText" placeholder="Enter new text"><br>
+    <button onclick="updateItem()">Update</button>
+    <div id="message" class="message"></div>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
+    function updateItem() {
+        const itemIdInput = document.getElementById('itemId');
+        const newTextInput = document.getElementById('newText');
+        const messageDiv = document.getElementById('message');
+        const itemId = itemIdInput.value.trim();
+        const newText = newTextInput.value.trim();
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        if (itemId && newText) {
+            fetch('/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: itemId, text: newText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.textContent = `Item ${itemId} updated successfully!`;
+                    messageDiv.className = 'message';
+                    itemIdInput.value = '';
+                    newTextInput.value = '';
+                    setTimeout(() => {
+                        messageDiv.textContent = '';
+                    }, 2000);
+                } else {
+                    messageDiv.textContent = `Error updating item ${itemId}`;
+                    messageDiv.className = 'message error';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                messageDiv.textContent = `Error updating item ${itemId}`;
+                messageDiv.className = 'message error';
+            });
+        } else {
+            messageDiv.textContent = 'Please enter both ID and new text';
+            messageDiv.className = 'message error';
         }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
     }
 </script>
 
