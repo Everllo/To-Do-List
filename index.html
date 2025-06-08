@@ -8,29 +8,11 @@
         body {
             font-family: Arial, sans-serif;
         }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
         .add-form {
             margin-top: 20px;
             width: 70%;
             margin: 20px auto;
+            text-align: center;
         }
         .add-form input[type="text"] {
             padding: 8px;
@@ -40,63 +22,56 @@
             padding: 8px;
             width: 20%;
         }
+        .message {
+            text-align: center;
+            color: green;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
 <h2 style="text-align: center;">To-Do List</h2>
 
-<table id="todoList">
-    <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
-</table>
-
 <div class="add-form">
     <input type="text" id="newItem" placeholder="Enter new item">
     <button onclick="addItem()">Add</button>
+    <div id="message" class="message"></div>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
     function addItem() {
         const newItemInput = document.getElementById('newItem');
+        const messageDiv = document.getElementById('message');
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: newItemText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    messageDiv.textContent = 'Item added successfully!';
+                    newItemInput.value = '';
+                    setTimeout(() => {
+                        messageDiv.textContent = '';
+                    }, 2000);
+                } else {
+                    messageDiv.textContent = 'Error adding item';
+                    messageDiv.style.color = 'red';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                messageDiv.textContent = 'Error adding item';
+                messageDiv.style.color = 'red';
+            });
         }
-    }
-
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
     }
 </script>
 
