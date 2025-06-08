@@ -1,87 +1,75 @@
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+const express = require('express');
 const mysql = require('mysql2/promise');
+const path = require('path');
+const app = express();
+const port = 3000;
 
-const PORT = 3000;
-
-// Database connection settings
-const dbConfig = {
+const pool = mysql.createPool({
     host: 'localhost',
     user: 'root',
-    password: '',
+    password: 'root',
     database: 'todolist',
-  };
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-  async function retrieveListItems() {
+// Получить все задачи
+app.get('/items', async (req, res) => {
     try {
-      // Create a connection to the database
-      const connection = await mysql.createConnection(dbConfig);
-      
-      // Query to select all items from the database
-      const query = 'SELECT id, text FROM items';
-      
-      // Execute the query
-      const [rows] = await connection.execute(query);
-      
-      // Close the connection
-      await connection.end();
-      
-      // Return the retrieved items as a JSON array
-      return rows;
-    } catch (error) {
-      console.error('Error retrieving list items:', error);
-      throw error; // Re-throw the error
+        const [rows] = await pool.query('SELECT * FROM items');
+        res.json(rows);
+    } catch (err) {
+        console.error('Ошибка получения задач:', err);
+        res.status(500).json({ error: 'Ошибка сервера' });
     }
-  }
+});
 
-// Stub function for generating HTML rows
-async function getHtmlRows() {
-    // Example data - replace with actual DB data later
-    /*
-    const todoItems = [
-        { id: 1, text: 'First todo item' },
-        { id: 2, text: 'Second todo item' }
-    ];*/
+// Добавить задачу
+app.post('/items', async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'Текст обязателен' });
+    try {
+        await pool.query('INSERT INTO items (text) VALUES (?)', [text]);
+        res.status(201).json({ success: true });
+    } catch (err) {
+        console.error('Ошибка добавления задачи:', err);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
 
-    const todoItems = await retrieveListItems();
+// Удалить задачу
+app.delete('/items/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM items WHERE id = ?', [id]);
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error('Ошибка удаления задачи:', err);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
 
-    // Generate HTML for each item
-    return todoItems.map(item => `
-        <tr>
-            <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td><button class="delete-btn">×</button></td>
-        </tr>
-    `).join('');
-}
-
-// Modified request handler with template replacement
-async function handleRequest(req, res) {
-    if (req.url === '/') {
-        try {
-            const html = await fs.promises.readFile(
-                path.join(__dirname, 'index.html'), 
-                'utf8'
-            );
-            
-            // Replace template placeholder with actual content
-            const processedHtml = html.replace('{{rows}}', await getHtmlRows());
-            
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end(processedHtml);
-        } catch (err) {
-            console.error(err);
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Error loading index.html');
+// Обновить задачу
+app.put('/items/:id', async (req, res) => {
+    const { id } = req.params;
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'Текст обязателен' });
+    try {
+        const [result] = await pool.query('UPDATE items SET text = ? WHERE id = ?', [text, id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Элемент не найден' });
         }
-    } else {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Route not found');
+        res.status(200).json({ success: true });
+    } catch (err) {
+        console.error('Ошибка обновления задачи:', err);
+        res.status(500).json({ error: 'Ошибка сервера' });
     }
-}
+});
 
-// Create and start server
-const server = http.createServer(handleRequest);
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(port, () => {
+    console.log(`Сервер запущен на http://localhost:${port}`);
+});
