@@ -1,23 +1,16 @@
+@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>To-Do List</title>
+    <title>To-Do List — Удаление</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-        }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
+@@ -21,24 +20,19 @@
         #todoList th {
             background-color: #f0f0f0;
         }
@@ -31,30 +24,33 @@
             margin-top: 20px;
             width: 70%;
             margin: 20px auto;
+            display: flex;
+            gap: 10px;
         }
         .add-form input[type="text"] {
             padding: 8px;
             width: 70%;
+            flex: 1;
         }
         .add-form button {
             padding: 8px;
             width: 20%;
+            padding: 8px 16px;
         }
     </style>
 </head>
-<body>
-
-<h2 style="text-align: center;">To-Do List</h2>
-
+@@ -49,55 +43,39 @@ <h2 style="text-align: center;">To-Do List</h2>
 <table id="todoList">
     <thead>
         <tr>
             <th>Number</th>
+            <th>ID</th>
             <th>Text</th>
             <th>Action</th>
         </tr>
     </thead>
     <tbody id="listBody">
+    <tbody>
         {{rows}}
     </tbody>
 </table>
@@ -62,6 +58,8 @@
 <div class="add-form">
     <input type="text" id="newItem" placeholder="Enter new item">
     <button onclick="addItem()">Add</button>
+    <input type="text" id="newItem" placeholder="Добавление отключено в этой ветке" disabled>
+    <button disabled>Добавить</button>
 </div>
 
 <script>
@@ -71,6 +69,8 @@
     function renderList() {
         const listBody = document.getElementById('listBody');
         listBody.innerHTML = '';
+    async function deleteItem(id) {
+        if (!confirm('Удалить эту задачу?')) return;
 
         items.forEach((item, index) => {
             const row = document.createElement('tr');
@@ -80,6 +80,12 @@
                 <td><button onclick="removeItem(${index})">Remove</button></td>
             `;
             listBody.appendChild(row);
+        const response = await fetch('/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id })
         });
     }
 
@@ -91,6 +97,10 @@
             items.push({ id: nextId++, text: newItemText });
             newItemInput.value = '';
             renderList();
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Ошибка при удалении');
         }
     }
 
@@ -101,4 +111,3 @@
 </script>
 
 </body>
-</html>
