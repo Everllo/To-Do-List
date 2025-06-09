@@ -1,45 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>To-Do List</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #todoList {
-            border-collapse: collapse;
-            width: 70%;
-            margin: 0 auto;
-        }
-        #todoList th, #todoList td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        #todoList th {
-            background-color: #f0f0f0;
-        }
-        #todoList th:first-child, #todoList th:last-child {
-            width: 5%;
-        }
-        #todoList th:nth-child(2) {
-            width: 90%;
-        }
-        .add-form {
-            margin-top: 20px;
-            width: 70%;
-            margin: 20px auto;
-        }
-        .add-form input[type="text"] {
-            padding: 8px;
-            width: 70%;
-        }
-        .add-form button {
-            padding: 8px;
-            width: 20%;
-        }
+        body { font-family: Arial, sans-serif; }
+        #todoList { border-collapse: collapse; width: 70%; margin: 0 auto; }
+        #todoList th, #todoList td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #todoList th { background-color: #f0f0f0; }
+        .add-form { margin-top: 20px; width: 70%; margin: 20px auto; }
+        .add-form input[type="text"] { padding: 8px; width: 70%; }
+        .add-form button { padding: 8px; width: 20%; }
     </style>
 </head>
 <body>
@@ -48,56 +20,77 @@
 
 <table id="todoList">
     <thead>
-        <tr>
-            <th>Number</th>
-            <th>Text</th>
-            <th>Action</th>
-        </tr>
+        <tr><th>#</th><th>Text</th><th>Actions</th></tr>
     </thead>
-    <tbody id="listBody">
-        {{rows}}
-    </tbody>
+    <tbody id="listBody"></tbody>
 </table>
 
 <div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
+    <input type="text" id="newItem" placeholder="Enter new item" />
     <button onclick="addItem()">Add</button>
 </div>
 
 <script>
     let items = [];
-    let nextId = 1;
+
+    async function loadItems() {
+        try {
+            const res = await fetch('/items');
+            items = await res.json();
+            renderList();
+        } catch (err) {
+            console.error('Ошибка загрузки:', err);
+        }
+    }
 
     function renderList() {
         const listBody = document.getElementById('listBody');
         listBody.innerHTML = '';
-
         items.forEach((item, index) => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
+                <td>
+                    <button onclick="removeItem(${item.id})">Delete</button>
+                </td>`;
             listBody.appendChild(row);
         });
     }
 
-    function addItem() {
-        const newItemInput = document.getElementById('newItem');
-        const newItemText = newItemInput.value.trim();
-
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+    async function addItem() {
+        const input = document.getElementById('newItem');
+        const text = input.value.trim();
+        if (text) {
+            try {
+                const res = await fetch('/items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                if (!res.ok) throw new Error('Ошибка добавления');
+                input.value = '';
+                loadItems();
+            } catch (err) {
+                alert('Ошибка при добавлении задачи.');
+                console.error(err);
+            }
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function removeItem(id) {
+        if (!confirm('Удалить эту задачу?')) return;
+        try {
+            const res = await fetch(`/items/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Ошибка удаления');
+            loadItems();
+        } catch (err) {
+            alert('Не удалось удалить задачу');
+            console.error(err);
+        }
     }
+
+    document.addEventListener('DOMContentLoaded', loadItems);
 </script>
 
 </body>
