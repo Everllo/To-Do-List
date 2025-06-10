@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>To-Do List</title>
     <style>
         body {
@@ -60,44 +60,52 @@
 </table>
 
 <div class="add-form">
-    <input type="text" id="newItem" placeholder="Enter new item">
+    <input type="text" id="newItem" placeholder="Enter new item" />
     <button onclick="addItem()">Add</button>
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
+    async function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        if (!newItemText) return;
+
+        try {
+            const response = await fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: newItemText })
+            });
+
+            if (response.ok) {
+                newItemInput.value = '';
+                // Обновляем список после добавления
+                loadList();
+            } else {
+                alert('Failed to add item');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function loadList() {
+        try {
+            const response = await fetch('/list');
+            if (response.ok) {
+                const data = await response.text();
+                document.getElementById('listBody').innerHTML = data;
+            }
+        } catch (error) {
+            console.error('Error loading list:', error);
+        }
     }
+
+    // Загружаем список при загрузке страницы
+    window.onload = loadList;
 </script>
 
 </body>
