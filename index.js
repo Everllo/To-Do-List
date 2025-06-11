@@ -15,6 +15,7 @@ const dbConfig = {
 
 
   async function retrieveListItems() {
+  async function addItem(text) {
     try {
       // Create a connection to the database
       const connection = await mysql.createConnection(dbConfig);
@@ -30,6 +31,11 @@ const dbConfig = {
       
       // Return the retrieved items as a JSON array
       return rows;
+       const connection = await mysql.createConnection(dbConfig);
+        const query = 'INSERT INTO items (text) VALUES (?)';
+        await connection.execute(query, [text]);
+        await connection.end();
+        return true;
     } catch (error) {
       console.error('Error retrieving list items:', error);
       throw error; // Re-throw the error
@@ -71,11 +77,29 @@ async function handleRequest(req, res) {
             
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(processedHtml);
+            res.end(html);
         } catch (err) {
             console.error(err);
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Error loading index.html');
         }
+        else if (req.url === '/add' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', async () => {
+            try {
+                const { text } = JSON.parse(body);
+                await addItem(text);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (error) {
+                console.error(error);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: 'Failed to add item' }));
+            }
+        });
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Route not found');
