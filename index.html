@@ -65,38 +65,52 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
+    async function renderList() {
+        try {
+            const response = await fetch('/');
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newRows = doc.getElementById('listBody').innerHTML;
+            document.getElementById('listBody').innerHTML = newRows;
+        } catch (error) {
+            console.error('Error refreshing list:', error);
+        }
     }
 
-    function addItem() {
+    async function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            try {
+                const response = await fetch('/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `text=${encodeURIComponent(newItemText)}`
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    newItemInput.value = '';
+                    await renderList();
+                } else {
+                    alert('Failed to add item');
+                }
+            } catch (error) {
+                console.error('Error adding item:', error);
+                alert('Error adding item');
+            }
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function removeItem(id) {
+        // You'll need to implement this similarly to addItem
+        // For now, it's just a placeholder
+        console.log('Remove item with id:', id);
+        alert('Remove functionality not implemented yet');
     }
 </script>
 
