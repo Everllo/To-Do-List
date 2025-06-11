@@ -1,8 +1,9 @@
 const http = require('http');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 const mysql = require('mysql2/promise');
 const querystring = require('querystring');
+const url = require('url');
 
 const PORT = 3000;
 
@@ -14,128 +15,111 @@ const dbConfig = {
     database: 'todolist',
 };
 
+// Экранирование HTML для предотвращения XSS
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Получение элементов из базы данных
 async function retrieveListItems() {
     try {
         const connection = await mysql.createConnection(dbConfig);
-        const query = 'SELECT id, text FROM items';
-        const [rows] = await connection.execute(query);
+        const [rows] = await connection.execute('SELECT id, text FROM items');
         await connection.end();
+        console.log('Retrieved items:', rows); // Отладка
         return rows;
     } catch (error) {
-        console.error('Ошибка при получении элементов:', error);
+        console.error('Error retrieving items:', error);
         throw error;
     }
 }
 
-// Добавление нового элемента в базу данных
-async function addListItem(text) {
+// Обновление элемента
+async function updateListItem(id, newText) {
     try {
         const connection = await mysql.createConnection(dbConfig);
-        const query = 'INSERT INTO items (text) VALUES (?)';
-        await connection.execute(query, [text]);
+        await connection.execute('UPDATE items SET text = ? WHERE id = ?', [newText, id]);
         await connection.end();
+        console.log('Updated item id:', id, 'to:', newText); // Отладка
     } catch (error) {
-        console.error('Ошибка при добавлении элемента:', error);
+        console.error('Error updating item:', error);
         throw error;
     }
 }
 
-// Удаление элемента из базы данных
-async function deleteListItem(id) {
-    try {
-        const connection = await mysql.createConnection(dbConfig);
-        const query = 'DELETE FROM items WHERE id = ?';
-        await connection.execute(query, [id]);
-        await connection.end();
-    } catch (error) {
-        console.error('Ошибка при удалении элемента:', error);
-        throw error;
-    }
-}
-
-// Генерация HTML строк для таблицы с формой удаления
+// Генерация HTML строк для таблицы
 async function getHtmlRows() {
-    const todoItems = await retrieveListItems();
-    return todoItems.map(item => `
-        <tr>
-            <td>${item.id}</td>
-            <td>${item.text}</td>
-            <td>
-                <form action="/delete" method="POST">
-                    <input type="hidden" name="id" value="${item.id}">
-                    <button type="submit" class="delete-btn">×</button>
-                </form>
-            </td>
-        </tr>
-    `).join('');
+    try {
+        const todoItems = await retrieveListItems();
+        if (!todoItems.length) {
+            return '<tr><td colspan="2">No items found</td></tr>';
+        }
+        return todoItems.map(item => `
+            <tr>
+                <td>${item.id}</td>
+                <td>
+                    <form action="/update" method="POST">
+                        <input type="hidden" name="id" value="${item.id}">
+                        <input type="text" name="newText" value="${escapeHtml(item.text)}" required>
+                        <button type="submit">Update</button>
+                    </form>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error generating HTML rows:', error);
+        return '<tr><td colspan="2">Error loading items</td></tr>';
+    }
 }
 
 // Обработка запросов
 async function handleRequest(req, res) {
-    if (req.method === 'POST' && req.url === '/add') {
-        const body = await new Promise((resolve, reject) => {
-            let body = '';
-            req.on('data', chunk => {
-                body += chunk.toString();
-            });
-            req.on('end', () => {
-                resolve(body);
-            });
-            req.on('error', reject);
+    const parsedUrl = url.parse(req.url, true);
+    console.log(`Request: ${req.method} ${req.url}`); // Отладка
+
+    if (req.method === 'POST' && parsedUrl.pathname === '/update') {
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', async () => {
+            const parsedBody = querystring.parse(body);
+            const id = parsedBody.id;
+            const newText = parsedBody.newText?.trim();
+            if (id && newText) {
+                try {
+                    await updateListItem(id, newText);
+                    res.writeHead(302, { 'Location': '/' });
+                    res.end();
+                } catch (error) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating item');
+                }
+            } else {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Item ID and text are required');
+            }
         });
-        const parsedBody = querystring.parse(body);
-        const newItemText = parsedBody.newItem;
+    } else if (req.method === 'GET' && parsedUrl.pathname === '/') {
         try {
-            await addListItem(newItemText);
-            res.writeHead(302, { 'Location': '/' });
-            res.end();
-        } catch (error) {
-            console.error('Ошибка при добавлении элемента:', error);
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Ошибка при добавлении элемента');
-        }
-    } else if (req.method === 'POST' && req.url === '/delete') {
-        const body = await new Promise((resolve, reject) => {
-            let body = '';
-            req.on('data', chunk => {
-                body += chunk.toString();
-            });
-            req.on('end', () => {
-                resolve(body);
-            });
-            req.on('error', reject);
-        });
-        const parsedBody = querystring.parse(body);
-        const id = parsedBody.id;
-        try {
-            await deleteListItem(id);
-            res.writeHead(302, { 'Location': '/' });
-            res.end();
-        } catch (error) {
-            console.error('Ошибка при удалении элемента:', error);
-            res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Ошибка при удалении элемента');
-        }
-    } else if (req.url === '/') {
-        try {
-            const html = await fs.promises.readFile(
-                path.join(__dirname, 'index.html'), 
-                'utf8'
-            );
+            const html = await fs.readFile(path.join(__dirname, 'index.html'), 'utf8');
             const processedHtml = html.replace('{{rows}}', await getHtmlRows());
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(processedHtml);
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error('Error serving index.html:', error);
             res.writeHead(500, { 'Content-Type': 'text/plain' });
-            res.end('Ошибка загрузки index.html');
+            res.end('Error loading page');
         }
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Маршрут не найден');
+        res.end('Not found');
     }
 }
 
+// Запуск сервера
 const server = http.createServer(handleRequest);
-server.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
