@@ -7,6 +7,8 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
         }
         #todoList {
             border-collapse: collapse;
@@ -25,12 +27,17 @@
             width: 5%;
         }
         #todoList th:nth-child(2) {
-            width: 90%;
+            width: 80%;
+        }
+        #todoList th:nth-child(3) {
+            width: 15%;
         }
         .add-form {
             margin-top: 20px;
             width: 70%;
             margin: 20px auto;
+            display: flex;
+            gap: 10px;
         }
         .add-form input[type="text"] {
             padding: 8px;
@@ -39,6 +46,18 @@
         .add-form button {
             padding: 8px;
             width: 20%;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            cursor: pointer;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 5px;
         }
     </style>
 </head>
@@ -65,22 +84,73 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
+    async function startEdit(id) {
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        const currentText = row.querySelector('.item-text').textContent;
 
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
+        row.innerHTML = `
+            <td>${id}</td>
+            <td><input type="text" class="edit-input" value="${currentText}"></td>
+            <td class="action-buttons">
+                <button onclick="saveEdit(${id})">Save</button>
+                <button onclick="cancelEdit(${id})">Cancel</button>
+            </td>
+        `;
 
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
+        row.querySelector('.edit-input').focus();
+    }
+
+     async function saveEdit(id) {
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        const newText = row.querySelector('.edit-input').value.trim();
+
+        if (newText) {
+            try {
+                const response = await fetch('/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `id=${id}&text=${encodeURIComponent(newText)}`
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    await refreshList();
+                } else {
+                    alert('Error saving changes');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error saving changes');
+            }
+        }
+    }
+
+    function cancelEdit(id) {
+        refreshList();
+    }
+
+         async function removeItem(id) {
+        if (confirm('Are you sure you want to delete this item?')) {
+            try {
+                const response = await fetch(`/delete?id=${id}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    await refreshList();
+                } else {
+                    alert('Error deleting item');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting item');
+            }
+        }
     }
 
     function addItem() {
@@ -88,15 +158,41 @@
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            itry {
+                const response = await fetch('/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `text=${encodeURIComponent(newItemText)}`
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    newItemInput.value = '';
+                    await refreshList();
+                } else {
+                    alert('Error adding item');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error adding item');
+            }
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function refreshList() {
+        try {
+            const response = await fetch('/');
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newBody = doc.getElementById('listBody').innerHTML;
+            document.getElementById('listBody').innerHTML = newBody;
+        } catch (error) {
+            console.error('Error refreshing list:', error);
+        }
     }
 </script>
 
