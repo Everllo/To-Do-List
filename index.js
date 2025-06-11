@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const url = require('url');
 
 const PORT = 3000;
 
@@ -13,23 +14,26 @@ const dbConfig = {
     database: 'todolist',
   };
 
-
+    async function retrieveListItems() {
+        try {
+            const connection = await mysql.createConnection(dbConfig);
+            const query = 'SELECT id, text FROM items';
+            const [rows] = await connection.execute(query);
+            await connection.end();
+            return rows;
+        } catch (error) {
+            console.error('Error retrieving list items:', error);
+            throw error;
+        }
+    }
   async function retrieveListItems() {
+  async function addListItem(text) {
     try {
-      // Create a connection to the database
       const connection = await mysql.createConnection(dbConfig);
-      
-      // Query to select all items from the database
-      const query = 'SELECT id, text FROM items';
-      
-      // Execute the query
-      const [rows] = await connection.execute(query);
-      
-      // Close the connection
-      await connection.end();
-      
-      // Return the retrieved items as a JSON array
-      return rows;
+        const query = 'INSERT INTO items (text) VALUES (?)';
+        const [result] = await connection.execute(query, [text]);
+        await connection.end();
+        return { id: result.insertId, text };
     } catch (error) {
       console.error('Error retrieving list items:', error);
       throw error; // Re-throw the error
@@ -37,13 +41,19 @@ const dbConfig = {
   }
 
 // Stub function for generating HTML rows
-async function getHtmlRows() {
-    // Example data - replace with actual DB data later
-    /*
-    const todoItems = [
-        { id: 1, text: 'First todo item' },
-        { id: 2, text: 'Second todo item' }
-    ];*/
+async function deleteListItem(id) {
+    try {
+        const connection = await mysql.createConnection(dbConfig);
+        const query = 'DELETE FROM items WHERE id = ?';
+        await connection.execute(query, [id]);
+        await connection.end();
+        return true;
+    } catch (error) {
+        console.error('Error deleting list item:', error);
+        throw error;
+    }
+}
+
 
     const todoItems = await retrieveListItems();
 
@@ -53,6 +63,7 @@ async function getHtmlRows() {
             <td>${item.id}</td>
             <td>${item.text}</td>
             <td><button class="delete-btn">×</button></td>
+            <td><button onclick="removeItem(${item.id})">Remove</button></td>
         </tr>
     `).join('');
 }
@@ -75,6 +86,41 @@ async function handleRequest(req, res) {
             console.error(err);
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Error loading index.html');
+        }
+         } else if (parsedUrl.pathname === '/items') {
+        try {
+            const items = await retrieveListItems();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(items));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Failed to retrieve items' }));
+        }
+    } else if (parsedUrl.pathname === '/add' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', async () => {
+            try {
+                const { text } = JSON.parse(body);
+                const newItem = await addListItem(text);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(newItem));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Failed to add item' }));
+            }
+        });
+    } else if (parsedUrl.pathname.startsWith('/delete/') && req.method === 'DELETE') {
+        const itemId = parsedUrl.pathname.split('/')[2];
+        try {
+            await deleteListItem(itemId);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Failed to delete item' }));
         }
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
