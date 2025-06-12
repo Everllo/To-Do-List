@@ -40,6 +40,32 @@
             padding: 8px;
             width: 20%;
         }
+        .delete-btn, .edit-btn {
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            margin: 0 2px;
+        }
+        .delete-btn {
+            background: #ff4444;
+            color: white;
+        }
+        .delete-btn:hover {
+            background: #cc0000;
+        }
+        .edit-btn {
+            background: #4285f4;
+            color: white;
+        }
+        .edit-btn:hover {
+            background: #3367d6;
+        }
+        .edit-input {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
@@ -49,9 +75,9 @@
 <table id="todoList">
     <thead>
         <tr>
-            <th>Number</th>
+            <th>ID</th>
             <th>Text</th>
-            <th>Action</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody id="listBody">
@@ -65,39 +91,148 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
+    async function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        if (!newItemText) {
+            alert('Please enter a task');
+            return;
+        }
+
+        try {
+            const response = await fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: newItemText })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert('Error adding item: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to add item');
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function updateItem(id, newText) {
+        try {
+            const response = await fetch('/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id, text: newText })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert('Error updating item');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to update item');
+        }
     }
+
+    async function removeItem(id) {
+        if (!confirm('Are you sure you want to delete this item?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert('Error deleting item');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to delete item');
+        }
+    }
+
+    function setupEditMode(row) {
+        const id = row.getAttribute('data-id');
+        const textCell = row.querySelector('.item-text');
+        const originalText = textCell.textContent;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'edit-input';
+        input.value = originalText;
+        
+        textCell.innerHTML = '';
+        textCell.appendChild(input);
+        
+        const saveButton = document.createElement('button');
+        saveButton.className = 'edit-btn';
+        saveButton.textContent = '💾';
+        saveButton.onclick = () => {
+            const newText = input.value.trim();
+            if (newText && newText !== originalText) {
+                updateItem(id, newText);
+            } else {
+                cancelEditMode(row, originalText);
+            }
+        };
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'delete-btn';
+        cancelButton.textContent = '✖';
+        cancelButton.onclick = () => cancelEditMode(row, originalText);
+        
+        const actionsCell = row.querySelector('td:last-child');
+        actionsCell.innerHTML = '';
+        actionsCell.appendChild(saveButton);
+        actionsCell.appendChild(cancelButton);
+        
+        input.focus();
+    }
+
+    function cancelEditMode(row, originalText) {
+        const textCell = row.querySelector('.item-text');
+        textCell.textContent = originalText;
+        
+        const id = row.getAttribute('data-id');
+        const actionsCell = row.querySelector('td:last-child');
+        actionsCell.innerHTML = `
+            <button class="edit-btn">✏️</button>
+            <button class="delete-btn">×</button>
+        `;
+        
+        // Reattach event listeners
+        actionsCell.querySelector('.edit-btn').onclick = () => setupEditMode(row);
+        actionsCell.querySelector('.delete-btn').onclick = () => removeItem(id);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('#listBody tr').forEach(row => {
+            const id = row.getAttribute('data-id');
+            row.querySelector('.edit-btn').onclick = () => setupEditMode(row);
+            row.querySelector('.delete-btn').onclick = () => removeItem(id);
+        });
+    });
 </script>
 
 </body>
