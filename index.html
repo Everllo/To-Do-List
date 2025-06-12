@@ -40,6 +40,20 @@
             padding: 8px;
             width: 20%;
         }
+        .delete-btn {
+            cursor: pointer;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 16px;
+            line-height: 25px;
+        }
+        .delete-btn:hover {
+            background: #cc0000;
+        }
     </style>
 </head>
 <body>
@@ -49,7 +63,7 @@
 <table id="todoList">
     <thead>
         <tr>
-            <th>Number</th>
+            <th>ID</th>
             <th>Text</th>
             <th>Action</th>
         </tr>
@@ -65,39 +79,73 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
+    async function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        if (!newItemText) {
+            alert('Please enter a task');
+            return;
+        }
+
+        try {
+            const response = await fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: newItemText })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert('Error adding item: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to add item');
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function removeItem(id) {
+        if (!confirm('Are you sure you want to delete this item?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert('Error deleting item');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to delete item');
+        }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                removeItem(id);
+            });
+        });
+    });
 </script>
 
 </body>
