@@ -65,39 +65,54 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
+    async function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
-        if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+        if (!newItemText) {
+            alert('Please enter a task');
+            return;
+        }
+
+        try {
+            const response = await fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: newItemText })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Reload the page to show updated list
+                window.location.reload();
+            } else {
+                alert('Error adding item: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to add item');
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    // Function to handle item deletion (to be implemented)
+    async function removeItem(id) {
+        // TODO: Implement deletion
+        console.log('Item to delete:', id);
     }
+
+    // Attach event listeners to delete buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                removeItem(id);
+            });
+        });
+    });
 </script>
 
 </body>
